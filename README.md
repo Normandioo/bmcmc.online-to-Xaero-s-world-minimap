@@ -38,6 +38,10 @@ Ponha o jar na pasta `mods` junto com Fabric API e o Xaero's. Abra o jogo uma ve
 
 `/territories` (liga/desliga) · `/territories reload` · `/territories status`
 
+## Plugin de servidor
+
+A pasta `plugin/` tem o **BmcWar**, um plugin Paper que faz a captura de cidades pelo relógio e troca os ícones do dynmap que o mod e o site leem. Veja `plugin/README.md`.
+
 ## Se o Xaero's atualizar
 
 O mod depende de duas coisas internas do Xaero's: `HighlighterRegistry.end()` (onde nos registramos) e a classe `AbstractHighlighter` (World Map e Minimap). Se uma atualização mudar isso, o mod simplesmente não pinta nada e o log mostra o erro do mixin; basta recompilar contra o jar novo e ajustar os nomes.
