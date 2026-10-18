@@ -54,10 +54,19 @@ jobs:
           distribution: temurin
           java-version: 21
       - uses: gradle/actions/setup-gradle@v4
-        with:
-          build-root-directory: plugin
       - run: chmod +x gradlew
-      - run: ./gradlew build --no-daemon
+      - name: Build
+        shell: bash
+        run: |
+          set +e
+          ./gradlew build --no-daemon > build.log 2>&1
+          code=$?
+          if [ $code -ne 0 ]; then
+            # show the cause in the run's annotations too
+            echo "::error title=Gradle failed::$(grep -E 'error|Could not|What went wrong|wrong|FAILED' -A3 build.log | head -25 | sed ':a;N;$!ba;s/\n/%0A/g')"
+          fi
+          cat build.log
+          exit $code
       - uses: actions/upload-artifact@v4
         with:
           name: BmcWar
