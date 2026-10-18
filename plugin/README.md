@@ -50,3 +50,4 @@ java -cp out:gson.jar EngineCheck caminho/para/territories.json
 - Ainda não foi rodado num servidor de verdade: a lógica foi testada com os dados reais, e o código de Paper e dynmap só foi checado contra a API que ele usa. Teste primeiro com uma guerra de teste e a permissão `bmcwar.bypass` na staff.
 
 - **Quem voa não conta:** com `capture.ignore-flying: true` (padrão), jogadores voando (fly) ou planando (elytra) são ignorados, tanto como atacantes quanto como resistência. Também não contam espectadores, mortos, quem tem a permissão `bmcwar.bypass` e quem está com a metadata `vanished`.
+- **Aviões (MTVehicles e outros veículos):** quem está sentado num veículo com só ar nos `capture.ignore-vehicle-above-blocks` (3) blocos abaixo também é ignorado. O plugin não depende do MTVehicles: olha se o jogador está montado em algo e longe do chão. Veículo parado ou rodando no chão continua contando. `0` desliga isso.

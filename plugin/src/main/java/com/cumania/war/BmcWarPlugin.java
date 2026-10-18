@@ -126,7 +126,21 @@ public final class BmcWarPlugin extends JavaPlugin {
         if (p.hasPermission("bmcwar.bypass")) return false;
         // flying (creative flight / fly) or gliding (elytra) players count for nothing, neither as attackers nor as resistance
         if (getConfig().getBoolean("capture.ignore-flying", true) && (p.isFlying() || p.isGliding())) return false;
+        // riding a vehicle (the planes of MTVehicles, for one) high above the ground counts for nothing either
+        int air = getConfig().getInt("capture.ignore-vehicle-above-blocks", 3);
+        if (air > 0 && p.isInsideVehicle() && airborne(p, air)) return false;
         return !p.hasMetadata("vanished");
+    }
+
+    /** True when there is nothing but air in the `blocks` blocks under the player (a vehicle on the ground has a block right below it). */
+    private static boolean airborne(Player p, int blocks) {
+        var loc = p.getLocation();
+        var world = loc.getWorld();
+        if (world == null) return false;
+        int x = loc.getBlockX(), z = loc.getBlockZ();
+        int y = loc.getBlockY();
+        for (int i = 0; i <= blocks; i++) if (!world.getBlockAt(x, y - i, z).getType().isAir()) return false;
+        return true;
     }
 
     /** Once a second: who stands where, and what the clock does about it. */
