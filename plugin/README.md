@@ -34,14 +34,14 @@ As versões do Paper API e do dynmap API em `build.gradle` são as que eu espera
 
 ## Como testar sem servidor
 
-`test/EngineCheck.java` e `test/DynmapCheck.java` rodam a regra contra o `territories.json` real do site (o segundo com marcadores de dynmap falsos). Com a API do Paper e do dynmap no classpath não são necessários; só o Gson:
+`test/EngineCheck.java` roda a regra de captura contra o `territories.json` real do site e só precisa do Gson (nada de Paper):
 
 ```
-javac -d out -cp gson.jar $(find src -name '*.java') test/EngineCheck.java
+javac -d out -cp gson.jar $(find src/main/java/com/cumania/war/site src/main/java/com/cumania/war/engine -name '*.java') test/EngineCheck.java
 java -cp out:gson.jar EngineCheck caminho/para/territories.json
 ```
 
-(`DynmapCheck` precisa do dynmap-api no classpath.)
+`test/DynmapCheck.java` testa o adaptador do dynmap com marcadores falsos e precisa do `dynmap-api` no classpath, além de `src/main/java/com/cumania/war/dynmap`.
 
 ## Limites
 
