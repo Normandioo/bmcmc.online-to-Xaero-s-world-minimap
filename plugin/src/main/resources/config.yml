@@ -31,8 +31,8 @@ capture:
   # pause = the timer stops while an opponent is inside and goes on from where it was when he leaves;
   # reset = the time starts over when the resistance ends.
   on-resistance: pause
-  # Seconds the attackers may be out of the city before the attempt is dropped.
-  grace-seconds: 60
+  # Seconds the attackers may be out of the city before the attempt is dropped (0 = dropped the moment they leave).
+  grace-seconds: 0
   # Seconds after a city is taken during which it cannot be taken again (0 = no cooldown).
   cooldown-seconds: 0
   # Players of a side that must be inside for the time to run.
