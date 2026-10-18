@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "cumania_territories",
+  "version": "${version}",
+  "name": "Cumania Territories",
+  "description": "Shows the country territories from the Cumania site on Xaero's World Map and Minimap.",
+  "authors": ["Cumania"],
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["com.cumania.territories.CumaniaTerritories"]
+  },
+  "mixins": ["cumania_territories.mixins.json"],
+  "depends": {
+    "fabricloader": ">=0.17.0",
+    "minecraft": "~1.21.11",
+    "java": ">=21",
+    "fabric-api": "*"
+  },
+  "suggests": {
+    "xaeroworldmap": ">=1.47.0",
+    "xaerominimap": ">=26.6.0"
+  }
+}

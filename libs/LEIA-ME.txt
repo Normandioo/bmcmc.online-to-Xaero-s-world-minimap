@@ -1,0 +1,4 @@
+Coloque aqui os jars do Xaero's que voce usa (so para compilar), por exemplo:
+  xaeroworldmap-fabric-1.21.11-1.47.0.jar
+  xaerominimap-fabric-1.21.11-26.6.0.jar
+Eles nao vao dentro do mod: os jogadores continuam instalando o Xaero's normalmente.

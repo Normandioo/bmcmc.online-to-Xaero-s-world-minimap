@@ -1,0 +1,15 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.cumania.territories.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "plugin": "com.cumania.territories.mixin.MixinPlugin",
+  "client": [
+    "WorldMapRegistryMixin",
+    "MinimapRegistryMixin",
+    "GuiMapClickMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 0
+  }
+}

@@ -1,0 +1,105 @@
+# Cumania Territories
+
+Mod client-side (Fabric 1.21.11) que mostra os territórios dos países do site no **Xaero's World Map** e no **Xaero's Minimap**, como o Open Parties and Claims mostra os claims: um tom por país, uma linha nas fronteiras entre países, com precisão de bloco, e o nome do país (e da província) ao passar o mouse.
+
+Funciona com um dos dois mods do Xaero's ou com os dois. Não precisa de nada no servidor.
+
+## Como funciona
+
+1. O site publica `gaia/territories.json`: as províncias do `latest.svg` já em coordenadas de bloco (`tools/export_territories.py`).
+2. O mod baixa esse arquivo, guarda uma cópia em `config/cumania_territories_cache.json` (funciona offline) e o confere de novo ao entrar num mundo e a cada 30 minutos.
+3. Cada bloco pertence à província que contém o centro dele (as províncias mais abaixo no SVG ficam por cima, como no site). O Xaero's pede 16x16 cores por chunk, e o mod responde bloco a bloco: preenchimento dentro do território e uma linha de 1 bloco onde o vizinho é de outro país. Dois mixins pequenos registram o nosso *highlighter* ao lado do dos claims, e o Xaero's cuida de desenhar, de dar zoom e de manter o cache.
+
+**Memória:** um byte por bloco do retângulo dos territórios (cerca de 25 MB para um mapa de 5000x5000).
+
+## Compilar
+
+1. Copie os jars do Xaero's que você usa para `libs/` (só para compilar).
+2. Rode `./gradlew build` (Windows: `gradlew build`) com Java 21. O jar fica em `build/libs/cumania-territories-1.0.0.jar`.
+3. Se o Gradle reclamar que alguma versão não existe, atualize `loader_version`, `fabric_api_version` ou o `fabric-loom` em `build.gradle` com o que https://fabricmc.net/develop/ indica para o 1.21.11.
+
+## Instalar
+
+Ponha o jar na pasta `mods` junto com Fabric API e o Xaero's. Abra o jogo uma vez: o mod cria `config/cumania_territories.json`. A `url` já vem apontando para `https://bmcmc.online/gaia/territories.json`, então os jogadores não precisam configurar nada. Para outro site, troque `url` e rode `/territories reload`.
+
+## Opções (`config/cumania_territories.json`)
+
+| Opção | Padrão | O que faz |
+|---|---|---|
+| `url` | `https://bmcmc.online/gaia/territories.json` | Onde está o `territories.json` |
+| `enabled` | `true` | Liga/desliga a camada |
+| `dimension` | `overworld` | Dimensão dos territórios (`overworld`, `nether`, `end`) |
+| `refreshMinutes` | `30` | De quanto em quanto tempo olhar o site (0 = só ao entrar) |
+| `fillAlpha` | `90` | Opacidade do preenchimento (0-255) |
+| `borderAlpha` | `230` | Opacidade da linha de fronteira (0-255) |
+| `showProvince` | `true` | Mostrar também a província no tooltip |
+
+## Comandos
+
+`/territories` (liga/desliga) · `/territories reload` · `/territories status`
+
+## Se o Xaero's atualizar
+
+O mod depende de duas coisas internas do Xaero's: `HighlighterRegistry.end()` (onde nos registramos) e a classe `AbstractHighlighter` (World Map e Minimap). Se uma atualização mudar isso, o mod simplesmente não pinta nada e o log mostra o erro do mixin; basta recompilar contra o jar novo e ajustar os nomes.
+
+## Testes
+
+`test/IndexCheck.java` confere o índice de blocos contra um teste exato de ponto-em-polígono (marcadores do SVG e blocos aleatórios). Veja o comentário no topo do arquivo.
+
+
+## Novo na 1.2.0: painel de informações e cidades
+
+- **Clique esquerdo num país** no World Map (mapa grande do Xaero) abre um painel com tipo, nome oficial, formação, líder, governo, etnia, capital, população e diplomacia (suseranos, súditos, aliados, NAP, alianças, guerras). Clique no mar para fechar.
+- **Cidades e localidades do site** aparecem como ícones com o nome da cor do país; o nome aparece conforme você dá zoom (cidades grandes primeiro). Clicar numa cidade mostra os dados dela e do país.
+- Opções em `config/cumania_territories.json`: `showPanel`, `showLocalities`, `showLocalityNames`, `localityZoomBias` (aumente para ver mais cidades de longe).
+- Os dados vêm do mesmo `territories.json`; rode `python tools/export_territories.py gaia` (ou deixe o GitHub Action fazer) para incluí-los. Mods antigos continuam compatíveis com o arquivo novo.
+- Limitações: sem bandeiras/fontes do site; a diplomacia é uma lista simplificada. Painel e cidades só no World Map (não no minimapa).
+
+## Novo na 1.2.1: painel redesenhado
+
+- O painel tem **cabeçalho na cor do país, bandeira** (baixada do site e desenhada em pixels), seções e rótulos em maiúsculas. Se a tela for pequena, os itens menos importantes saem primeiro. Clicar no mar ou no "x" fecha o painel.
+- Requer o `territories.json` novo (campo `flag` em cada país), gerado por `tools/export_territories.py`.
+
+## 1.2.3
+
+- Removido o destaque do país clicado no mapa (dava atraso por causa do Xaero). O painel, a bandeira e as cidades continuam iguais.
+
+## 1.3.0: cartão do jogador
+
+- Na lista de população do painel do país, cada nome é clicável. Abre ao lado um cartão com a **skin** do jogador, o nome no jogo, o país de origem, a última entrada, as afiliações e as notas — tudo vindo do `players.json` do site (nada é buscado fora do site).
+- "Copy NameMC link" copia o link do perfil do jogador no NameMC.
+- As skins são baixadas da Mojang pelo exportador (GitHub Action) e ficam em `gaia/skins/`; o mod só lê do site. Em `players.json` dá para escrever `"skin": "<link do NameMC, UUID ou nome>"` num jogador para escolher outra conta; sem isso vale o `ign`.
+- Requer o `territories.json` novo (campo `players`) e as skins geradas por `tools/export_territories.py`.
+
+## 1.3.1: mais dados no cartão do jogador
+
+- O cartão agora segue a página do jogador do site: **afiliações atuais** (nação/clique e cargo), **purge timer** (dias, reino e população do reino), **última entrada**, **purgeable from / since** (calculado no jogo a partir da última entrada, então sempre atual), **imunidade**, **senhorios** (localidades de que é lorde, com tipo e designações), histórico e notas.
+- Não mostra "Online now" (precisaria da lista de jogadores online do servidor).
+- Requer o `territories.json` novo (rode o workflow): `current`, `purge` e `immune` por jogador, e `lord` das localidades agora aceita senhorio compartilhado.
+
+## 1.3.2: ir até a cidade do lorde
+
+- No cartão do jogador, cada localidade em "Lord of" é clicável: o mapa desliza até ela, com o mesmo movimento do "ir para coordenadas" do Xaero. O painel e o cartão continuam abertos.
+- **1.3.3:** ao ir até a cidade o mapa também aproxima, até o zoom `goToZoom` (padrão 1.5, em `config/cumania_territories.json`; `0` desliga). Nunca afasta: se você já estiver mais perto, o zoom fica como está.
+
+## 1.4.0: menu de guerra
+
+Botão **WAR** no canto superior direito do World Map (ou `/territories war`). Tudo vem do `diplomacy.json` do site, via `territories.json`:
+
+- **Wars**: guerras ativas e encerradas. Ao abrir uma, o menu mostra tipo e regra, status, início/fim (com "há X dias") e a trégua depois do fim, teatro, "no allies", os lados com seus membros (inclui "e subordinados") e as localidades capturadas (clique para ir até a cidade, com zoom). O mapa é pintado com as cores dos lados (países fora da guerra ficam cinza; províncias capturadas na cor de quem as tem; contestada em amarelo, sem controle em cinza claro). Voltar (`<`) ou fechar restaura o mapa.
+- **Alliances**: alianças e pactos bilaterais, membros e datas de entrada; abrir pinta os membros.
+- **Timers**: tréguas (inclusive a de 3 dias após guerra ou ultimato aceito), ultimatos pendentes (aceitos sozinhos após 72 h), NAPs com data, e diplolocks (Belligerent, Foundation, Set by Staff). Os tempos são calculados no jogo a partir de datas absolutas, então ficam certos sem recarregar.
+- Opção `showWarMenu` no config. Requer o `territories.json` novo (bloco `war`): rode o workflow.
+- Fora do menu (existe só no site): mapa estratégico com conexões, "em jogo"/alvos, controle por dynmap ao vivo, pontuação de capitulação e guerras de sucessão derivadas.
+
+## 1.4.1: menu de guerra mais fácil de achar e de ler
+
+- O botão **WAR** ficou maior, vermelho quando há guerras em andamento e mostra quantas (ex.: `WAR 1`).
+- Painel mais largo, mais espaço entre linhas, abas em botões, títulos de seção com barra colorida, rótulos em cima e valores embaixo.
+- Em Timers e nas listas, cada item usa duas linhas: quem (branco) e quando (dourado). Seções vazias aparecem só como "none".
+- Rolagem por `[ Up ]` / `[ Down ]` quando o conteúdo passa da tela; `< Back` volta da guerra/aliança.
+
+## 1.4.2: quem está ganhando
+
+- Cada guerra ativa ganha uma **barra dividida entre os lados** (na lista e no topo do detalhe), proporcional ao que cada lado tomou do outro: cidades capturadas que estão em poder de um lado e pertencem a países do lado oposto. A linha abaixo diz quem está na frente ("Attackers are ahead"), empate ou "No captures yet".
+- É uma medida simples (conta de capturas); a pontuação oficial de capitulação (7.9) continua só no site.
