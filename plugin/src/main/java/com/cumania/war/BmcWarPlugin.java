@@ -124,6 +124,8 @@ public final class BmcWarPlugin extends JavaPlugin {
         GameMode mode = p.getGameMode();
         if (mode == GameMode.SPECTATOR) return false;
         if (p.hasPermission("bmcwar.bypass")) return false;
+        // flying (creative flight / fly) or gliding (elytra) players count for nothing, neither as attackers nor as resistance
+        if (getConfig().getBoolean("capture.ignore-flying", true) && (p.isFlying() || p.isGliding())) return false;
         return !p.hasMetadata("vanished");
     }
 

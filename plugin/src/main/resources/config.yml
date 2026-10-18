@@ -37,6 +37,8 @@ capture:
   cooldown-seconds: 0
   # Players of a side that must be inside for the time to run.
   min-attackers: 1
+  # Players who are flying (fly mode) or gliding (elytra) do not count, neither as attackers nor as resistance.
+  ignore-flying: true
   # A city with no outline on the site gets a round area of this radius (blocks).
   fallback-radius: 40
 

@@ -48,3 +48,5 @@ java -cp out:gson.jar EngineCheck caminho/para/territories.json
 - Só o mundo configurado em `world` (o principal), só até três lados por guerra (as cores do dynmap são três).
 - Um jogador que está na população de mais de um país conta pelo primeiro que o site lista.
 - Ainda não foi rodado num servidor de verdade: a lógica foi testada com os dados reais, e o código de Paper e dynmap só foi checado contra a API que ele usa. Teste primeiro com uma guerra de teste e a permissão `bmcwar.bypass` na staff.
+
+- **Quem voa não conta:** com `capture.ignore-flying: true` (padrão), jogadores voando (fly) ou planando (elytra) são ignorados, tanto como atacantes quanto como resistência. Também não contam espectadores, mortos, quem tem a permissão `bmcwar.bypass` e quem está com a metadata `vanished`.
