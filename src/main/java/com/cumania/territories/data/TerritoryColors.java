@@ -33,6 +33,7 @@ public final class TerritoryColors {
     public static boolean compute(TerritoryIndex index, int chunkX, int chunkZ, int fillAlpha, int borderAlpha, int[] out) {
         if (!index.chunkHasTerritory(chunkX, chunkZ)) return false;
         WarPaint.Paint paint = WarPaint.current();
+        boolean greyOthers = com.cumania.territories.TerritoryManager.config().warGreyOthers;
         int baseX = chunkX << 4, baseZ = chunkZ << 4;
         for (int z = 0; z < 16; z++) {
             for (int x = 0; x < 16; x++) {
@@ -42,7 +43,7 @@ public final class TerritoryColors {
                 int rgb = index.countryRgb(country), fillA = fillAlpha, borderA = borderAlpha;
                 if (paint != null) {
                     int painted = country < paint.countryRgb().length ? paint.countryRgb()[country] : -1;
-                    if (painted >= 0) rgb = painted; else { rgb = WarPaint.NEUTRAL; fillA = fillAlpha / 2; borderA = borderAlpha / 2; }
+                    if (painted >= 0) rgb = painted; else if (greyOthers) { rgb = WarPaint.NEUTRAL; fillA = fillAlpha / 2; borderA = borderAlpha / 2; }
                     if (!paint.provinceRgb().isEmpty()) {
                         for (Map.Entry<Integer, int[]> e : paint.provinceBounds().entrySet()) {   // few: only the captured provinces
                             int[] b = e.getValue();

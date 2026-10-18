@@ -107,8 +107,17 @@ public final class WarMenu {
     private static int mouseX, mouseY, panelX, panelH, chipX, chipW = 52;
 
     public static void toggle() { setOpen(!open); }
+    /** Closes the menu (the settings menu takes its place). */
+    public static void close() { if (open) setOpen(false); }
+    /** Where the WAR button starts, so the BMC button can sit to its left. */
+    static int chipLeft(int screenW) {
+        var font = Minecraft.getInstance().font;
+        int running = activeCount();
+        return screenW - (font.width(running > 0 ? "WAR  " + running : "WAR") + 18) - 6;
+    }
 
     private static void setOpen(boolean value) {
+        if (value) SettingsMenu.close();
         open = value;
         if (!open) leaveDetail();
     }
@@ -129,19 +138,19 @@ public final class WarMenu {
     private static void leaveDetail() {
         boolean was = warId != null || allianceId != null;
         warId = null; allianceId = null; scroll = 0;
-        if (was || WarPaint.current() != null) { WarPaint.set(null); TerritoryManager.repaint(); }
+        if (was || WarPaint.current() != null) WarPaint.apply(TerritoryManager.index(), null);
     }
 
     private static void openWar(String id) {
         warId = id; allianceId = null; scroll = 0;
         TerritoryFile.WarInfo war = findWar(id);
-        if (war != null) { WarPaint.set(WarPaint.forWar(TerritoryManager.index(), war)); TerritoryManager.repaint(); }
+        if (war != null) WarPaint.apply(TerritoryManager.index(), WarPaint.forWar(TerritoryManager.index(), war));
     }
 
     private static void openAlliance(String id) {
         allianceId = id; warId = null; scroll = 0;
         TerritoryFile.AllianceInfo a = findAlliance(id);
-        if (a != null) { WarPaint.set(WarPaint.forAlliance(TerritoryManager.index(), a)); TerritoryManager.repaint(); }
+        if (a != null) WarPaint.apply(TerritoryManager.index(), WarPaint.forAlliance(TerritoryManager.index(), a));
     }
 
     private static void selectTab(int t) { if (t != tab || warId != null || allianceId != null) { leaveDetail(); tab = t; scroll = 0; } }
@@ -273,21 +282,89 @@ public final class WarMenu {
         return out;
     }
 
+    /** The country picked in the Alliances tab (a country id), "*" for every alliance, or null for none yet. */
+    private static String allianceFilter;
+    private static boolean filterOpen;
+
+    private static boolean includes(TerritoryFile.AllianceInfo a, String countryId) {
+        if (a.members == null) return false;
+        for (var m : a.members) if (m.countries != null && m.countries.contains(countryId)) return true;
+        return false;
+    }
+
     private static List<L> buildAlliances(Font font, int width) {
         List<L> out = new ArrayList<>();
-        var list = TerritoryManager.index().war().alliances;
+        var index = TerritoryManager.index();
+        var list = index.war().alliances;
         if (list == null || list.isEmpty()) { text(out, font, width, "No alliances on record on the site.", MUTED); return out; }
-        out.add(title("Alliances  " + list.size(), TEXT, -1));
-        for (var a : list) {
-            String id = a.id;
-            Integer color = WarPaint.parse(a.color);
-            out.add(new L(a.name, TEXT, () -> openAlliance(id), color != null ? color : 0x3A6FD8, false));
-            for (String part : PanelModel.wrap((a.members == null ? 0 : a.members.size()) + " members" + (a.formed != null ? "  -  formed " + a.formed : ""), width - 12, font::width))
-                out.add(new L("   " + part, MUTED, null, -1, false));
-            out.add(gap());
+
+        // countries that are in at least one alliance, by name
+        java.util.TreeMap<String, String> countries = new java.util.TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+        for (var a : list) if (a.members != null) for (var m : a.members) if (m.countries != null)
+            for (String id : m.countries) { int ci = index.countryIndex(id); if (ci >= 0) countries.put(index.countryName(ci), id); }
+
+        out.add(title("Filter by country", TEXT, -1));
+        String current = allianceFilter == null ? "Pick a country..." : "*".equals(allianceFilter) ? "All alliances"
+                : index.countryIndex(allianceFilter) >= 0 ? index.countryName(index.countryIndex(allianceFilter)) : allianceFilter;
+        int currentCi = allianceFilter == null || "*".equals(allianceFilter) ? -1 : index.countryIndex(allianceFilter);
+        out.add(new L((filterOpen ? "[-]  " : "[+]  ") + current, LINK, () -> filterOpen = !filterOpen, currentCi >= 0 ? index.countryRgb(currentCi) : -1, false));
+        if (filterOpen) {
+            out.add(new L("   All alliances", TEXT, () -> { allianceFilter = "*"; filterOpen = false; scroll = 0; }, -1, false));
+            for (var e : countries.entrySet()) {
+                String id = e.getValue();
+                int ci = index.countryIndex(id);
+                out.add(new L("   " + e.getKey(), TEXT, () -> { allianceFilter = id; filterOpen = false; scroll = 0; }, ci >= 0 ? index.countryRgb(ci) : -1, false));
+            }
+            return out;
         }
+        out.add(gap());
+
+        if (allianceFilter == null) {
+            text(out, font, width, "Pick a country to see its allies and the alliances it belongs to.", MUTED);
+            return out;
+        }
+        if ("*".equals(allianceFilter)) {
+            out.add(title("Alliances  " + list.size(), TEXT, -1));
+            for (var a : list) addAllianceEntry(out, font, width, a, null);
+            out.add(new L("Click an alliance to paint its members.", MUTED, null, -1, false));
+            return out;
+        }
+
+        String name = currentCi >= 0 ? index.countryName(currentCi) : allianceFilter;
+        List<TerritoryFile.AllianceInfo> its = new ArrayList<>();
+        for (var a : list) if (includes(a, allianceFilter)) its.add(a);
+        if (its.isEmpty()) { text(out, font, width, name + " is not in any alliance on record.", MUTED); return out; }
+
+        // every other country that shares an alliance with it
+        java.util.TreeSet<String> allies = new java.util.TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+        for (var a : its) for (var m : a.members) if (m.countries != null) for (String id : m.countries) {
+            if (id.equals(allianceFilter)) continue;
+            int ci = index.countryIndex(id);
+            allies.add(ci >= 0 ? index.countryName(ci) : id);
+        }
+        out.add(title("Allies of " + name + "  " + allies.size(), TEXT, currentCi >= 0 ? index.countryRgb(currentCi) : -1));
+        text(out, font, width, String.join(", ", allies), TEXT);
+        out.add(gap());
+        out.add(title("Alliances  " + its.size(), TEXT, -1));
+        for (var a : its) addAllianceEntry(out, font, width, a, allianceFilter);
         out.add(new L("Click an alliance to paint its members.", MUTED, null, -1, false));
         return out;
+    }
+
+    /** One alliance in the list: its name (click to open), then who is in it. */
+    private static void addAllianceEntry(List<L> out, Font font, int width, TerritoryFile.AllianceInfo a, String exceptCountry) {
+        String id = a.id;
+        Integer color = WarPaint.parse(a.color);
+        out.add(new L(a.name, TEXT, () -> openAlliance(id), color != null ? color : 0x3A6FD8, false));
+        String info;
+        if (exceptCountry == null) info = (a.members == null ? 0 : a.members.size()) + " members" + (a.formed != null ? "  -  formed " + a.formed : "");
+        else {
+            List<String> names = new ArrayList<>();
+            if (a.members != null) for (var m : a.members) if (m.countries == null || !m.countries.contains(exceptCountry) || m.countries.size() > 1) names.add(m.name);
+            info = "With: " + String.join(", ", names) + (a.formed != null ? "  -  formed " + a.formed : "");
+        }
+        for (String part : PanelModel.wrap(info, width - 12, font::width)) out.add(new L("   " + part, MUTED, null, -1, false));
+        out.add(gap());
     }
 
     private static List<L> buildAlliance(Font font, int width, TerritoryFile.AllianceInfo a) {
@@ -405,8 +482,7 @@ public final class WarMenu {
         TerritoryFile.AllianceInfo alliance = allianceId == null ? null : findAlliance(allianceId);
         if ((warId != null && war == null) || (allianceId != null && alliance == null)) { leaveDetail(); war = null; alliance = null; }
         if ((war != null || alliance != null) && WarPaint.current() == null) {
-            WarPaint.set(war != null ? WarPaint.forWar(index, war) : WarPaint.forAlliance(index, alliance));
-            TerritoryManager.repaint();
+            WarPaint.apply(index, war != null ? WarPaint.forWar(index, war) : WarPaint.forAlliance(index, alliance));
         }
         int innerW = PW - 2 * PAD;
         boolean detail = war != null || alliance != null;
@@ -425,7 +501,7 @@ public final class WarMenu {
         while (last < lines.size() && used + lines.get(last).height() <= budget) used += lines.get(last++).height();
         if (last == first && first < lines.size()) last = first + 1;
         panelH = HEADER_H + tabsH + used + 12 + (overflow ? footerH : 0);
-        int x0 = screenW - PW - 6, y0 = TOP;
+        int x0 = Math.max(2, screenW - PW - 6), y0 = TOP;
         panelX = x0;
 
         int accent = 0xFFE05050;
@@ -433,9 +509,7 @@ public final class WarMenu {
         g.fill(x0, y0, x0 + PW, y0 + panelH, 0xF2101010);
         g.fill(x0, y0, x0 + PW, y0 + HEADER_H, 0xFF4A1818);
         g.fill(x0, y0 + HEADER_H - 1, x0 + PW, y0 + HEADER_H, accent);
-        String title = war != null ? war.name : alliance != null ? alliance.name : "War menu";
-        while (font.width(title) > PW - 56 && title.length() > 4) title = title.substring(0, title.length() - 2);
-        if (!title.equals(war != null ? war.name : alliance != null ? alliance.name : "War menu")) title += "...";
+        String title = Fit.bold(font, war != null ? war.name : alliance != null ? alliance.name : "War menu", PW - 62);
         Component titleText = Component.literal(title).withStyle(ChatFormatting.BOLD);
         g.drawString(font, titleText, x0 + (PW - font.width(titleText)) / 2, y0 + 8, 0xFFFFFFFF, true);
         g.drawString(font, "x", x0 + PW - 14, y0 + 8, 0xFFDDDDDD, true);
@@ -480,15 +554,16 @@ public final class WarMenu {
                 y += 3;
                 g.fill(x0 + PAD - 3, y - 1, x0 + PAD, y + 10, 0xFF000000 | (line.swatch >= 0 ? line.swatch : 0xE05050));
                 x += 3;
-                g.drawString(font, Component.literal(line.text).withStyle(ChatFormatting.BOLD), x, y + 1, line.rgb, true);
+                g.drawString(font, Component.literal(Fit.bold(font, line.text, x0 + PW - PAD - x)).withStyle(ChatFormatting.BOLD), x, y + 1, line.rgb, true);
                 y += line.height() - 3;
                 continue;
             }
             if (line.swatch >= 0) { g.fill(x, y + 1, x + 8, y + 9, 0xFF000000 | line.swatch); x += 12; }
-            int w = font.width(line.text);
+            String shown = Fit.text(font, line.text, x0 + PW - PAD - x);
+            int w = font.width(shown);
             boolean hover = line.action != null && mx >= x && mx < x + w && my >= y - 1 && my < y + LINE - 1;
             int color = line.action != null ? (hover ? 0xFFFFFFFF : LINK) : line.rgb;
-            g.drawString(font, line.text, x, y + 1, color, line.action != null || color == TEXT);
+            g.drawString(font, shown, x, y + 1, color, line.action != null || color == TEXT);
             if (line.action != null) {
                 g.fill(x, y + 10, x + w, y + 11, hover ? 0xFFFFFFFF : 0x808FD0FF);
                 hits.add(new Hit(x - 2, y - 1, x + w + 2, y + LINE, line.action));

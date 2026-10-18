@@ -103,3 +103,12 @@ Botão **WAR** no canto superior direito do World Map (ou `/territories war`). T
 
 - Cada guerra ativa ganha uma **barra dividida entre os lados** (na lista e no topo do detalhe), proporcional ao que cada lado tomou do outro: cidades capturadas que estão em poder de um lado e pertencem a países do lado oposto. A linha abaixo diz quem está na frente ("Attackers are ahead"), empate ou "No captures yet".
 - É uma medida simples (conta de capturas); a pontuação oficial de capitulação (7.9) continua só no site.
+
+## 1.5.0: ajustes de desempenho e de interface
+
+- **Cores da guerra mais rápidas:** ao abrir, trocar ou fechar uma guerra/aliança só as regiões do mapa cujas cores realmente mudam são redesenhadas (de uma guerra para outra, quase nada), as mais próximas de você primeiro. Se ainda achar lento, desligue "Grey out others in wars" no menu BMC: aí só os países da guerra mudam.
+- **Destaque da cidade:** ao ir até uma cidade (pelo cartão do jogador ou pela guerra) ela ganha uma moldura dourada e anéis que pulsam por 6 segundos, e o nome aparece mesmo com pouco zoom.
+- **Textos dentro das caixas:** títulos, rótulos, nomes e linhas longas agora são cortados com "..." em vez de passar da caixa, e o cartão do jogador não sai mais da tela.
+- **Alianças por país:** a aba Alianças começa só com um filtro. Escolha um país para ver seus aliados e as alianças dele (ou "All alliances" para a lista completa).
+- **Botão BMC (logo do site) ao lado do WAR:** menu para ajustar a intensidade da cor dos territórios e das fronteiras (passos de 10%), mostrar/ocultar territórios, cidades, nomes, painel e província no tooltip. Tudo é salvo no config.
+- **Marcadores das cidades:** usa os ícones do próprio site (`icons/<tipo>.png`, baixados na hora). "City markers" no menu BMC alterna para os quadrados simples de antes. Opções no config: `markerStyle` (`site` ou `simple`), `markerIconUrl`, `logoUrl`, `warGreyOthers`.

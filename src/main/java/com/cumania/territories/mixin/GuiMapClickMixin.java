@@ -35,6 +35,7 @@ public abstract class GuiMapClickMixin implements CameraTarget {
 
     @Override
     public void cumania$goTo(int blockX, int blockZ, double minZoom) {
+        com.cumania.territories.compat.Focus.set(blockX, blockZ);
         cameraDestination = new int[]{blockX, blockZ};
         if (minZoom > 0 && destScale < minZoom) destScale = minZoom;
     }

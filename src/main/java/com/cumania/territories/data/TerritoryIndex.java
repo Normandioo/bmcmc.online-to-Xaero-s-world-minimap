@@ -32,6 +32,7 @@ public final class TerritoryIndex {
     private Map<String, TerritoryFile.Player> players = Map.of();   // lower-case site name -> record
     private final boolean[] chunkHas;                     // chunks with at least one claimed block
     private final boolean[] regionHas;                    // 32x32 chunk regions
+    private final long[] regionCountries;                // 4 longs per region: which countries have blocks in it
     private final int minCx, minCz, chunksW, chunksH, minRx, minRz, regionsW, regionsH;
 
     private TerritoryIndex(int minX, int minZ, int width, int height, byte[] grid, List<TerritoryFile.Province> provinces,
@@ -53,7 +54,7 @@ public final class TerritoryIndex {
         }
         if (width == 0) {
             minCx = minCz = chunksW = chunksH = minRx = minRz = regionsW = regionsH = 0;
-            chunkHas = new boolean[0]; regionHas = new boolean[0];
+            chunkHas = new boolean[0]; regionHas = new boolean[0]; regionCountries = new long[0];
             return;
         }
         minCx = minX >> 4; minCz = minZ >> 4;
@@ -72,6 +73,15 @@ public final class TerritoryIndex {
         regionHas = new boolean[regionsW * regionsH];
         for (int cz = 0; cz < chunksH; cz++) for (int cx = 0; cx < chunksW; cx++) {
             if (chunkHas[cz * chunksW + cx]) regionHas[(((minCz + cz) >> 5) - minRz) * regionsW + (((minCx + cx) >> 5) - minRx)] = true;
+        }
+        regionCountries = new long[regionsW * regionsH * 4];
+        for (int z = 0; z < height; z++) {
+            int rRow = (((minZ + z) >> 9) - minRz) * regionsW;
+            for (int x = 0; x < width; x++) {
+                int v = (grid[z * width + x] & 255) - 1;
+                if (v < 0) continue;
+                regionCountries[(rRow + (((minX + x) >> 9) - minRx)) * 4 + (v >> 6)] |= 1L << (v & 63);
+            }
         }
     }
 
@@ -203,6 +213,28 @@ public final class TerritoryIndex {
     public boolean chunkHasTerritory(int cx, int cz) {
         int x = cx - minCx, z = cz - minCz;
         return x >= 0 && z >= 0 && x < chunksW && z < chunksH && chunkHas[z * chunksW + x];
+    }
+
+    /**
+     * The regions (as {regionX, regionZ}) a recolouring touches: those holding blocks of a changed country, plus
+     * those overlapping the given block boxes (single provinces). Lets the map redraw only what changed.
+     */
+    public List<int[]> regionsTouching(boolean[] changedCountries, List<int[]> blockBoxes) {
+        List<int[]> out = new ArrayList<>();
+        for (int rz = 0; rz < regionsH; rz++) for (int rx = 0; rx < regionsW; rx++) {
+            int base = (rz * regionsW + rx) * 4;
+            boolean hit = false;
+            for (int c = 0; c < changedCountries.length && !hit; c++) {
+                if (changedCountries[c] && c < 256 && (regionCountries[base + (c >> 6)] & (1L << (c & 63))) != 0) hit = true;
+            }
+            int wx = (minRx + rx) << 9, wz = (minRz + rz) << 9;
+            for (int i = 0; i < blockBoxes.size() && !hit; i++) {
+                int[] b = blockBoxes.get(i);
+                if (b[2] >= wx && b[0] < wx + 512 && b[3] >= wz && b[1] < wz + 512) hit = true;
+            }
+            if (hit) out.add(new int[]{minRx + rx, minRz + rz});
+        }
+        return out;
     }
 
     /** Whether any chunk in the 32x32 region (region coordinates) is claimed. */

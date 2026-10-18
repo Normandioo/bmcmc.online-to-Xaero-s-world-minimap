@@ -21,6 +21,37 @@ public final class WarPaint {
     public static Paint current() { return current; }
     public static void set(Paint paint) { current = paint; }
 
+    /**
+     * Switches to another paint and tells the map to redraw only the regions whose colours actually change
+     * (switching from one war to another leaves most of the map as it was), which is much faster than redrawing everything.
+     */
+    public static void apply(TerritoryIndex index, Paint next) {
+        Paint old = current;
+        current = next;
+        boolean[] changed = new boolean[index.countryCount()];
+        for (int c = 0; c < changed.length; c++) changed[c] = effective(old, c) != effective(next, c);
+        java.util.List<int[]> boxes = new java.util.ArrayList<>();
+        addProvinceBoxes(old, next, boxes);
+        addProvinceBoxes(next, old, boxes);
+        com.cumania.territories.TerritoryManager.repaintRegions(index.regionsTouching(changed, boxes));
+    }
+
+    /** -2 = normal colours, -1 = greyed, otherwise the painted RGB. */
+    private static int effective(Paint p, int country) {
+        if (p == null) return -2;
+        int rgb = country < p.countryRgb().length ? p.countryRgb()[country] : -1;
+        return rgb < 0 && !com.cumania.territories.TerritoryManager.config().warGreyOthers ? -2 : rgb;
+    }
+
+    /** Provinces painted in `a` whose colour differs in `b`. */
+    private static void addProvinceBoxes(Paint a, Paint b, java.util.List<int[]> out) {
+        if (a == null) return;
+        for (Map.Entry<Integer, Integer> e : a.provinceRgb().entrySet()) {
+            if (b != null && e.getValue().equals(b.provinceRgb().get(e.getKey()))) continue;
+            out.add(a.provinceBounds().get(e.getKey()));
+        }
+    }
+
     public static int sideColor(TerritoryFile.Side side, int index) {
         Integer own = parse(side.color);
         return own != null ? own : SIDE_COLORS[index % SIDE_COLORS.length];

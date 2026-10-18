@@ -26,12 +26,20 @@ public final class Config {
     /** Draw the cities from the site on Xaero's World Map, and their names. */
     public boolean showLocalities = true;
     public boolean showLocalityNames = true;
+    /** City markers: "site" = the site's own icons, "simple" = plain coloured squares. */
+    public String markerStyle = "site";
+    /** Where the site keeps its marker icons (Small.png, LargeCapital.png...). */
+    public String markerIconUrl = "https://bmcmc.online/icons/";
     /** Raise to see small cities and names at lower zoom, lower to see fewer. */
     public double localityZoomBias = 1.0;
     /** Zoom the map to at least this when jumping to a lord's city from the player card (never zooms out). 0 = keep the zoom. */
     public double goToZoom = 1.5;
     /** The WAR button on Xaero's World Map (and /territories war): wars, alliances and diplomatic timers from the site. */
     public boolean showWarMenu = true;
+    /** In the war and alliance views, grey out the countries that are not part of it (a bit slower to draw than leaving them alone). */
+    public boolean warGreyOthers = true;
+    /** Where the site's logo (the BMC button's picture) comes from. */
+    public String logoUrl = "https://bmcmc.online/favicon.ico";
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 

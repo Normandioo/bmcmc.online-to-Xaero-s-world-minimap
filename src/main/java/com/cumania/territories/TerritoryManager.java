@@ -71,6 +71,8 @@ public final class TerritoryManager {
         };
     }
 
+    public static void saveConfig() { config.save(configFile); }
+
     // ---- changes ----
 
     public static boolean toggle() {
@@ -119,6 +121,15 @@ public final class TerritoryManager {
 
     /** The map's colours changed (the war menu painted or cleared it): redraw. */
     public static void repaint() { changed(); }
+
+    /** Redraws just these regions ({regionX, regionZ}) of the World Map; the minimap redraws as usual. */
+    public static void repaintRegions(java.util.List<int[]> regions) {
+        version++;
+        Minecraft.getInstance().execute(() -> {
+            if (FabricLoader.getInstance().isModLoaded("xaeroworldmap")) com.cumania.territories.compat.WorldMapBridge.refreshRegions(dimension(), regions);
+            if (FabricLoader.getInstance().isModLoaded("xaerominimap")) com.cumania.territories.compat.MinimapBridge.refresh();
+        });
+    }
 
     /** Tells Xaero's to redraw. The map code isn't thread-safe, so it happens on the game thread. */
     private static void changed() {
