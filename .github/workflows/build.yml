@@ -1,0 +1,64 @@
+# Builds the Xaero's mod and the server plugin on every push, and keeps the jars to download
+# (repository > Actions > the run > Artifacts). Nothing needs to be installed on anyone's computer.
+name: Build
+
+on:
+  push:
+    branches: [claude/dev, main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  mod:
+    name: Fabric mod
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      # The mod is compiled against Xaero's World Map and Minimap (they are not part of the repository and are not put in the jar):
+      # the newest Fabric build of each for the Minecraft version in gradle.properties, from Modrinth.
+      - name: Fetch Xaero's jars (compile only)
+        run: |
+          mc=$(grep '^minecraft_version=' gradle.properties | cut -d= -f2)
+          mkdir -p libs
+          for project in xaeros-world-map xaeros-minimap; do
+            url=$(curl -fsS "https://api.modrinth.com/v2/project/$project/version?loaders=%5B%22fabric%22%5D&game_versions=%5B%22$mc%22%5D" \
+              | python3 -c "import json,sys; v=json.load(sys.stdin); print(v[0]['files'][0]['url'])")
+            echo "$project: $url"
+            curl -fsSL -o "libs/$project.jar" "$url"
+          done
+      - run: chmod +x gradlew
+      - run: ./gradlew build --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cumania-territories
+          path: |
+            build/libs/*.jar
+            !build/libs/*-sources.jar
+            !build/libs/*-dev.jar
+
+  plugin:
+    name: Server plugin (BmcWar)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: plugin
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          build-root-directory: plugin
+      - run: chmod +x gradlew
+      - run: ./gradlew build --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BmcWar
+          path: plugin/build/libs/*.jar
