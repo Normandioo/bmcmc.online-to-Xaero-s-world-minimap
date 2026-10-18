@@ -63,12 +63,12 @@ public final class BmcWarPlugin extends JavaPlugin {
     /** Builds the engine from the config. Called on start and on /bmcwar reload. */
     void setup() {
         var c = getConfig();
-        Map<String, Double> minutes = new HashMap<>();
-        ConfigurationSection section = c.getConfigurationSection("capture.minutes");
-        if (section != null) for (String k : section.getKeys(false)) minutes.put(k, section.getDouble(k));
-        Rules rules = new Rules(minutes, c.getDouble("capture.default-minutes", 10), c.getDouble("capture.capital-multiplier", 1.5),
+        Map<String, Double> seconds = new HashMap<>();
+        ConfigurationSection section = c.getConfigurationSection("capture.seconds");
+        if (section != null) for (String k : section.getKeys(false)) seconds.put(k, section.getDouble(k));
+        Rules rules = new Rules(seconds, c.getDouble("capture.default-seconds", 10), c.getDouble("capture.capital-multiplier", 1.5),
                 !"pause".equalsIgnoreCase(c.getString("capture.on-resistance", "reset")), c.getDouble("capture.grace-seconds", 60),
-                c.getDouble("capture.cooldown-minutes", 10) * 60, Math.max(1, c.getInt("capture.min-attackers", 1)));
+                Math.max(0, c.getDouble("capture.cooldown-seconds", 0)), Math.max(1, c.getInt("capture.min-attackers", 1)));
         var plugin = Bukkit.getPluginManager().getPlugin("dynmap");
         if (plugin instanceof org.dynmap.DynmapAPI api) {
             dynmap = new DynmapMarkers(api, c.getString("dynmap.world", "world"), m -> getLogger().warning(m));

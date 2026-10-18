@@ -6,11 +6,11 @@ Guerras pelo relógio. Hoje, para tomar uma cidade, os jogadores de um lado fica
 
 - **Cidades, lados e jogadores vêm do site** (`gaia/territories.json`): as cidades, as guerras com seus lados e quem joga por qual país. O nome do jogo (`ign` do `players.json`) leva ao nome do site, que leva à lista de população de um país, que leva a um lado da guerra.
 - **Os limites de cada cidade são o contorno dela no SVG do site.** O exportador já converte o `latest.svg` em polígonos em blocos; a cidade é a província em que o marcador dela está. Nos dados de hoje, 355 das 356 cidades têm contorno próprio, sem sobreposição. A que não tem recebe uma área redonda (`capture.fallback-radius`).
-- **Tempo por tipo de cidade** (`capture.minutes`: Locality, Colonial, Fort, Small, Medium, Large; capitais multiplicam por `capital-multiplier`).
+- **Tempo por tipo de cidade** (`capture.seconds` (em segundos): Locality, Colonial, Fort, Small, Medium, Large; capitais multiplicam por `capital-multiplier`).
 - **Regra:** um lado que fica dentro da cidade pelo tempo dela, sem ninguém do lado que a segura lá dentro, toma a cidade. O ícone no dynmap muda para a cor do lado (Red = 1º lado, Blue = 2º, Green = 3º), como o site e o mod esperam.
 - **Resistência:** alguém do lado que segura a cidade dentro dela, ou dois lados atacando ao mesmo tempo, deixa a cidade **Contested** e o tempo recomeça (`on-resistance: pause` mantém o que já tinha). Quando a resistência sai, o ícone volta ao que era.
 - **Quem segura a cidade é o que o ícone diz.** Se um moderador trocar o ícone à mão, vale o que ele pôs (e uma captura em andamento nessa cidade é descartada). Cidade sem cor de guerra é de quem é dona dela.
-- **Sem pressa de voltar:** `grace-seconds` (60) é quanto os atacantes podem sair antes de a tentativa ser descartada; `cooldown-minutes` (10) é o tempo em que uma cidade recém-tomada não pode ser tomada de novo.
+- **Sem pressa de voltar:** `grace-seconds` (60) é quanto os atacantes podem sair antes de a tentativa ser descartada; `cooldown-seconds` (0 = sem espera) é o tempo em que uma cidade recém-tomada não pode ser tomada de novo.
 - **Avisos:** no chat quando um lado começa a capturar, quando a cidade fica contestada e quando é tomada; na barra acima da hotbar, o tempo que falta para quem está dentro. Cada aviso liga e desliga em `announce`.
 - **Não contam** jogadores em espectador, mortos, em vanish (`vanished` metadata) ou com a permissão `bmcwar.bypass`.
 

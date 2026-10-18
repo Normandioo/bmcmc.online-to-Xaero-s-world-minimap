@@ -36,8 +36,8 @@ public class EngineCheck {
         check(bySide.getOrDefault(0, 0) > 0 && bySide.getOrDefault(1, 0) > 0, "players are found on both sides");
 
         // timers by city type
-        Map<String, Double> minutes = new HashMap<>(Map.of("Locality", 10.0, "Colonial", 15.0, "Fort", 15.0, "Small", 20.0, "Medium", 30.0, "Large", 45.0));
-        Rules rules = new Rules(minutes, 10, 1.5, true, 60, 600, 1);
+        Map<String, Double> minutes = new HashMap<>(Map.of("Locality", 600.0, "Colonial", 900.0, "Fort", 900.0, "Small", 1200.0, "Medium", 1800.0, "Large", 2700.0));
+        Rules rules = new Rules(minutes, 600, 1.5, true, 60, 600, 1);   // seconds
         SiteData.City small = site.cities().stream().filter(c -> c.country().equals("Lombriga") && c.baseKind().equals("Small")).findFirst().orElse(null);
         SiteData.City loc = site.cities().stream().filter(c -> c.country().equals("Lombriga") && c.baseKind().equals("Locality") && !c.capital()).findFirst().orElse(null);
         System.out.println("small=" + small + "\nloc=" + (loc == null ? null : loc.name() + " " + loc.kind()));

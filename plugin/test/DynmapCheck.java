@@ -47,7 +47,7 @@ public class DynmapCheck {
         check(!dm.write(war, d, 2) && warnings.size() == 1, "an icon dynmap does not have is refused with one warning: " + warnings);
         check(!dm.write(war, site.cities().get(10), 0), "a city with no marker is refused");
         // the engine through the adapter
-        Rules rules = new Rules(Map.of("Small", 20.0, "Locality", 10.0, "Fort", 15.0), 10, 1.5, true, 60, 600, 1);
+        Rules rules = new Rules(Map.of("Small", 1200.0, "Locality", 600.0, "Fort", 900.0), 600, 1.5, true, 60, 600, 1);
         CaptureEngine eng = new CaptureEngine(rules, dm);
         var p = List.of(new CaptureEngine.Present("x", 1, d.x(), d.z()));
         double need = rules.secondsFor(d);
