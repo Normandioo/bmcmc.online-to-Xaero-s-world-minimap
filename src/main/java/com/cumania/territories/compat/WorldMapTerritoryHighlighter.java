@@ -48,8 +48,18 @@ public final class WorldMapTerritoryHighlighter extends AbstractHighlighter {
     }
 
     private static Component countryName(TerritoryIndex index, int country) {
+        return coloured(index, country, index.countryName(country));
+    }
+
+    private static Component coloured(TerritoryIndex index, int country, String text) {
         int rgb = index.countryRgb(country);
-        return Component.literal(index.countryName(country)).withStyle(style -> style.withColor(rgb));
+        return Component.literal(text).withStyle(style -> style.withColor(rgb));
+    }
+
+    /** Xaero's draws the tooltip on one line without wrapping, so keep it narrower than the screen. */
+    private static int tooltipRoom() {
+        var mc = net.minecraft.client.Minecraft.getInstance();
+        return mc.getWindow().getGuiScaledWidth() - 40;
     }
 
     @Override
@@ -57,7 +67,7 @@ public final class WorldMapTerritoryHighlighter extends AbstractHighlighter {
         if (!applies(dimension)) return null;
         TerritoryIndex index = TerritoryManager.index();
         int country = index.countryAtBlock(blockX, blockZ);
-        return country < 0 ? null : countryName(index, country);
+        return country < 0 ? null : coloured(index, country, Fit.text(net.minecraft.client.Minecraft.getInstance().font, index.countryName(country), tooltipRoom()));
     }
 
     @Override
@@ -66,10 +76,17 @@ public final class WorldMapTerritoryHighlighter extends AbstractHighlighter {
         TerritoryIndex index = TerritoryManager.index();
         int country = index.countryAtBlock(blockX, blockZ);
         if (country < 0) return null;
-        Component name = countryName(index, country);
-        if (!TerritoryManager.config().showProvince) return name;
-        int province = index.provinceAtBlock(blockX, blockZ);
-        return province < 0 ? name : Component.empty().append(name).append(Component.literal(" - " + index.provinceLabel(province)));
+        var font = net.minecraft.client.Minecraft.getInstance().font;
+        int room = tooltipRoom();
+        String name = index.countryName(country);
+        if (TerritoryManager.config().showProvince) {
+            int province = index.provinceAtBlock(blockX, blockZ);
+            if (province >= 0) {
+                String full = name + " - " + index.provinceLabel(province);
+                if (font.width(full) <= room) return coloured(index, country, full);   // too long for the screen: the country alone
+            }
+        }
+        return coloured(index, country, Fit.text(font, name, room));
     }
 
     @Override

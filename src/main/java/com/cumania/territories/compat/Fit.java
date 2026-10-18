@@ -1,6 +1,8 @@
 package com.cumania.territories.compat;
 
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.Font;
+import net.minecraft.network.chat.Component;
 
 /** Keeps text inside its box: too long -> cut and ended with "...". */
 public final class Fit {
@@ -15,9 +17,16 @@ public final class Fit {
         return text.substring(0, cut).stripTrailing() + "...";
     }
 
-    /** Same, for text drawn in bold (bold glyphs are one pixel wider). */
+    /** Same, for text drawn in bold (measured as bold, whose glyphs are wider). */
     public static String bold(Font font, String text, int maxWidth) {
         if (text == null) return "";
-        return text(font, text, maxWidth - Math.max(0, text.length() / 3));
+        if (maxWidth <= 0 || boldWidth(font, text) <= maxWidth) return text;
+        int cut = text.length();
+        while (cut > 0 && boldWidth(font, text.substring(0, cut) + "...") > maxWidth) cut--;
+        return text.substring(0, cut).stripTrailing() + "...";
+    }
+
+    public static int boldWidth(Font font, String text) {
+        return font.width(Component.literal(text).withStyle(ChatFormatting.BOLD));
     }
 }
