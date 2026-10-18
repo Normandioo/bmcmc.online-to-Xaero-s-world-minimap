@@ -117,3 +117,10 @@ Botão **WAR** no canto superior direito do World Map (ou `/territories war`). T
 
 - Títulos em negrito eram medidos como texto normal e ainda passavam da caixa; agora são medidos em negrito e cortados com "...".
 - O tooltip do mapa ("País - Província") passou da largura da tela com nomes longos: agora cabe na tela (só o país, e cortado se preciso).
+
+## 1.6.0: cores de guerra instantâneas
+
+- As cores de guerra/aliança deixaram de passar pelo Xaero's (que redesenha região por região, devagar): o mod agora desenha as cores **ele mesmo** por cima do World Map. Cada país é cortado em células de 4 blocos, as células da mesma cor viram retângulos e só os que aparecem na tela são preenchidos a cada quadro. Abrir, trocar ou fechar uma guerra é imediato.
+- Como o mod precisa saber onde cada bloco está na tela (calculado a partir da câmera do Xaero's), a cada quadro ele confere isso com o bloco que o próprio Xaero's diz estar sob o mouse. Se algum dia não bater, o desenho próprio se desliga sozinho (aviso no log) e volta o método antigo, mais lento.
+- Menu BMC: "Instant war colours" liga/desliga isso (config `warOverlay`).
+- Diferenças: as cores de guerra aparecem só no World Map (o minimapa continua com as cores normais), as fronteiras são um pouco mais "quadradas" (células de 4 blocos) e as cores ficam por cima dos ícones das cidades, de leve.

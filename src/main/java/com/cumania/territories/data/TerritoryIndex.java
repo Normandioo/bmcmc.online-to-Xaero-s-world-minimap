@@ -269,6 +269,8 @@ public final class TerritoryIndex {
     public String countryId(int country) { return countryIds[country]; }
     public String provinceLabel(int province) { return provinceLabels[province]; }
     public int countryOfProvince(int province) { return countryOfProvince[province]; }
+    /** {minX, minZ, width, height} of the block grid. */
+    public int[] blockBounds() { return new int[]{minX, minZ, width, height}; }
     public boolean isEmpty() { return width == 0; }
     public int provinceCount() { return provinceLabels.length; }
     public int countryCount() { return countryIds.length; }

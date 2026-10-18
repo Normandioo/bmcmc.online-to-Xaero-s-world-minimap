@@ -72,7 +72,7 @@ public final class SettingsMenu {
         if (!open) { panelH = 0; return; }
 
         // rows
-        int rowCount = 9;
+        int rowCount = 10;
         panelH = HEADER_H + 7 + rowCount * ROW + 14;
         panelH = Math.min(panelH, screenH - TOP - 6);
         int x0 = Math.max(2, Math.min(btnX + BTN - PW, screenW - PW - 2)), y0 = TOP;
@@ -95,9 +95,23 @@ public final class SettingsMenu {
         boolean site = !"simple".equalsIgnoreCase(c.markerStyle);
         y = choice(g, font, x0, y, "City markers", site ? "Site icons" : "Simple", () -> { c.markerStyle = site ? "simple" : "site"; changed(false); });
         y = toggle(g, font, x0, y, "Info panel on click", c.showPanel, () -> { c.showPanel = !c.showPanel; changed(false); });
-        y = toggle(g, font, x0, y, "Province in tooltip", c.showProvince, () -> { c.showProvince = !c.showProvince; changed(true); });
-        y = toggle(g, font, x0, y, "Grey out others in wars", c.warGreyOthers, () -> { c.warGreyOthers = !c.warGreyOthers; changed(true); });
+        y = toggle(g, font, x0, y, "Province in tooltip", c.showProvince, () -> { c.showProvince = !c.showProvince; changed(false); });
+        y = toggle(g, font, x0, y, "Grey out others in wars", c.warGreyOthers, () -> { c.warGreyOthers = !c.warGreyOthers; changed(!WarOverlay.handles()); refreshWar(); });
+        y = toggle(g, font, x0, y, "Instant war colours", c.warOverlay, () -> { c.warOverlay = !c.warOverlay; changed(false); switchWarMode(); });
         g.drawString(font, Fit.text(font, "Saved to config/cumania_territories.json", PW - 2 * PAD), x0 + PAD, y + 3, 0xFF707070, false);
+    }
+
+    private static void refreshWar() {
+        var paint = com.cumania.territories.data.WarPaint.current();
+        if (paint != null && WarOverlay.handles()) WarOverlay.set(TerritoryManager.index(), paint);
+    }
+
+    /** The war colours move between our overlay and Xaero's own painting: redo them the other way. */
+    private static void switchWarMode() {
+        var paint = com.cumania.territories.data.WarPaint.current();
+        if (paint == null) return;
+        if (WarOverlay.handles()) WarOverlay.set(TerritoryManager.index(), paint); else WarOverlay.clear();
+        TerritoryManager.repaint();
     }
 
     private static boolean over(int x0, int y, int x1) { return mouseX >= x0 && mouseX < x1 && mouseY >= y - 2 && mouseY < y + ROW - 3; }

@@ -32,7 +32,7 @@ public final class TerritoryColors {
      */
     public static boolean compute(TerritoryIndex index, int chunkX, int chunkZ, int fillAlpha, int borderAlpha, int[] out) {
         if (!index.chunkHasTerritory(chunkX, chunkZ)) return false;
-        WarPaint.Paint paint = WarPaint.current();
+        WarPaint.Paint paint = WarPaint.xaeroPaint();
         boolean greyOthers = com.cumania.territories.TerritoryManager.config().warGreyOthers;
         int baseX = chunkX << 4, baseZ = chunkZ << 4;
         for (int z = 0; z < 16; z++) {
