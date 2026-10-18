@@ -5,6 +5,7 @@ name: Build
 on:
   push:
     branches: [claude/dev, main]
+    tags: ['v*']          # a tag like v1.8.0 also publishes a Release with the jars
   pull_request:
   workflow_dispatch:
 
@@ -71,3 +72,28 @@ jobs:
         with:
           name: BmcWar
           path: plugin/build/libs/*.jar
+
+  # A tag "vX.Y.Z" turns the two jars above into a GitHub Release (notes: .github/release-notes/vX.Y.Z.md when it exists).
+  release:
+    name: Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [mod, plugin]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          set -e
+          find dist -name '*.jar' | sort
+          notes=".github/release-notes/$TAG.md"
+          if [ -f "$notes" ]; then notes_args=(--notes-file "$notes"); else notes_args=(--generate-notes); fi
+          gh release create "$TAG" --title "$TAG" "${notes_args[@]}" $(find dist -name '*.jar' | tr '\n' ' ')
