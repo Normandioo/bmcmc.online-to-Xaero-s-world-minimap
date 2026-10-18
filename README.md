@@ -112,3 +112,8 @@ Botão **WAR** no canto superior direito do World Map (ou `/territories war`). T
 - **Alianças por país:** a aba Alianças começa só com um filtro. Escolha um país para ver seus aliados e as alianças dele (ou "All alliances" para a lista completa).
 - **Botão BMC (logo do site) ao lado do WAR:** menu para ajustar a intensidade da cor dos territórios e das fronteiras (passos de 10%), mostrar/ocultar territórios, cidades, nomes, painel e província no tooltip. Tudo é salvo no config.
 - **Marcadores das cidades:** usa os ícones do próprio site (`icons/<tipo>.png`, baixados na hora). "City markers" no menu BMC alterna para os quadrados simples de antes. Opções no config: `markerStyle` (`site` ou `simple`), `markerIconUrl`, `logoUrl`, `warGreyOthers`.
+
+## 1.5.1
+
+- Títulos em negrito eram medidos como texto normal e ainda passavam da caixa; agora são medidos em negrito e cortados com "...".
+- O tooltip do mapa ("País - Província") passou da largura da tela com nomes longos: agora cabe na tela (só o país, e cortado se preciso).
