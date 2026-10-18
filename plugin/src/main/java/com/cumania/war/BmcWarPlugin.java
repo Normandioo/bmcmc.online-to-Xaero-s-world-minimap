@@ -66,8 +66,8 @@ public final class BmcWarPlugin extends JavaPlugin {
         Map<String, Double> seconds = new HashMap<>();
         ConfigurationSection section = c.getConfigurationSection("capture.seconds");
         if (section != null) for (String k : section.getKeys(false)) seconds.put(k, section.getDouble(k));
-        Rules rules = new Rules(seconds, c.getDouble("capture.default-seconds", 10), c.getDouble("capture.capital-multiplier", 1.5),
-                !"pause".equalsIgnoreCase(c.getString("capture.on-resistance", "reset")), c.getDouble("capture.grace-seconds", 60),
+        Rules rules = new Rules(seconds, c.getDouble("capture.default-seconds", 0), c.getDouble("capture.capital-multiplier", 1),
+                !"pause".equalsIgnoreCase(c.getString("capture.on-resistance", "pause")), c.getDouble("capture.grace-seconds", 60),
                 Math.max(0, c.getDouble("capture.cooldown-seconds", 0)), Math.max(1, c.getInt("capture.min-attackers", 1)));
         var plugin = Bukkit.getPluginManager().getPlugin("dynmap");
         if (plugin instanceof org.dynmap.DynmapAPI api) {
