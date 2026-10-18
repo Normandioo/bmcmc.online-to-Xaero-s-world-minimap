@@ -1,6 +1,8 @@
 package com.cumania.territories.compat;
 
 import com.cumania.territories.TerritoryManager;
+import com.cumania.territories.data.DynmapClient;
+import com.cumania.territories.data.LiveControl;
 import com.cumania.territories.data.PanelModel;
 import com.cumania.territories.data.TerritoryFile;
 import com.cumania.territories.data.WarPaint;
@@ -58,9 +60,9 @@ public final class WarMenu {
         int[] taken = new int[n], colors = new int[n];
         String[] names = new String[n];
         for (int i = 0; i < n; i++) { colors[i] = WarPaint.sideColor(war.sides.get(i), i); names[i] = war.sides.get(i).name; }
-        if (war.captured != null) for (var c : war.captured) {
-            if (!"held".equals(c.state) || c.holderKey == null) continue;
-            int captor = sideOfCountry(war, c.holderKey), owner = sideOfCountry(war, c.country);
+        for (var c : LiveControl.captured(TerritoryManager.index(), war)) {
+            if (!"held".equals(c.state) || (c.holderKey == null && c.liveSide == null)) continue;
+            int captor = c.liveSide != null ? c.liveSide : sideOfCountry(war, c.holderKey), owner = sideOfCountry(war, c.country);
             if (captor >= 0 && owner >= 0 && captor != owner) taken[captor]++;
         }
         int leader = 0, best = -1; boolean even = false;
@@ -209,6 +211,21 @@ public final class WarMenu {
 
     private static L title(String text, int rgb, int swatch) { return new L(text, rgb, null, swatch, true); }
 
+    private static boolean hasLiveWar(com.cumania.territories.data.TerritoryIndex index) {
+        var wars = index.war().wars;
+        if (wars != null) for (var w : wars) if (w.live && w.ended == null) return true;
+        return false;
+    }
+
+    /** dynmap's markers changed: if the open war is live, paint what it says now (only the regions that differ are redrawn). */
+    public static void liveChanged() {
+        Minecraft.getInstance().execute(() -> {
+            if (!open || warId == null) return;
+            var war = findWar(warId);
+            if (war != null && war.live) WarPaint.apply(TerritoryManager.index(), WarPaint.forWar(TerritoryManager.index(), war));
+        });
+    }
+
     private static int activeCount() {
         var wars = TerritoryManager.index().war().wars;
         int n = 0;
@@ -267,11 +284,14 @@ public final class WarMenu {
             }
             out.add(gap());
         }
-        if (war.captured != null && !war.captured.isEmpty()) {
-            out.add(title("Captured  " + war.captured.size() + "   (click to go)", TEXT, -1));
-            for (var c : war.captured) {
+        var captured = LiveControl.captured(TerritoryManager.index(), war);
+        if (!captured.isEmpty()) {
+            out.add(title("Captured  " + captured.size() + "   (click to go)", TEXT, -1));
+            if (LiveControl.isLive(war)) out.add(new L("Live from dynmap", OK, null, -1, false));
+            for (var c : captured) {
                 String holder = "contested".equals(c.state) ? "contested" : "uncontrolled".equals(c.state) ? "uncontrolled" : "held by " + c.holder;
-                int swatch = "contested".equals(c.state) ? WarPaint.CONTESTED : "uncontrolled".equals(c.state) ? WarPaint.UNCONTROLLED : -1;
+                int swatch = "contested".equals(c.state) ? WarPaint.CONTESTED : "uncontrolled".equals(c.state) ? WarPaint.UNCONTROLLED
+                        : c.liveSide != null && war.sides != null && c.liveSide < war.sides.size() ? WarPaint.sideColor(war.sides.get(c.liveSide), c.liveSide) : -1;
                 int x = c.x, z = c.z;
                 out.add(new L(c.name, LINK, () -> goTo(x, z), swatch, false));
                 out.add(new L("   " + holder, MUTED, null, -1, false));
@@ -484,6 +504,7 @@ public final class WarMenu {
         if ((war != null || alliance != null) && WarPaint.current() == null) {
             WarPaint.apply(index, war != null ? WarPaint.forWar(index, war) : WarPaint.forAlliance(index, alliance));
         }
+        if (config.liveWar && hasLiveWar(index) && (tab == 0 || war != null)) DynmapClient.wantMarkers();
         int innerW = PW - 2 * PAD;
         boolean detail = war != null || alliance != null;
         List<L> lines = war != null ? buildWar(font, innerW, war) : alliance != null ? buildAlliance(font, innerW, alliance)

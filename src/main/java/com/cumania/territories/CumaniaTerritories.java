@@ -12,6 +12,7 @@ public final class CumaniaTerritories implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
+        com.cumania.territories.data.DynmapClient.onMarkersChanged(com.cumania.territories.compat.WarMenu::liveChanged);
         TerritoryManager.init(FabricLoader.getInstance().getConfigDir());
         com.cumania.territories.command.TerritoryCommand.register();
         boolean worldMap = FabricLoader.getInstance().isModLoaded("xaeroworldmap");

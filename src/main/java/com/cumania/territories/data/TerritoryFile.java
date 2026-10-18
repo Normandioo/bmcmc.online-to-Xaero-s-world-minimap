@@ -34,6 +34,8 @@ public final class TerritoryFile {
     public static final class WarInfo {
         public String id, name, type, rule, started, ended, theater, notes;
         public boolean noAllies;
+        /** The site reads who holds its cities from dynmap while this is set. */
+        public boolean live;
         public List<Side> sides;
         public List<Captured> captured;
     }
@@ -52,6 +54,8 @@ public final class TerritoryFile {
     public static final class Captured {
         public String name, country, state, holder, holderKey;   // state: held / contested / uncontrolled
         public int x, z;
+        /** Set by live control (not in the file): which side's colour holds it. */
+        public transient Integer liveSide;
     }
 
     public static final class AllianceInfo {

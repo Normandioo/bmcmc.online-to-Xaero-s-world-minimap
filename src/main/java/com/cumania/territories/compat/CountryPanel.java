@@ -1,6 +1,7 @@
 package com.cumania.territories.compat;
 
 import com.cumania.territories.TerritoryManager;
+import com.cumania.territories.data.DynmapClient;
 import com.cumania.territories.data.FlagCache;
 import com.cumania.territories.data.PanelModel;
 import com.cumania.territories.data.SkinCache;
@@ -36,7 +37,10 @@ public final class CountryPanel {
     private static volatile TerritoryFile.Locality locality;
     private static int mouseX, mouseY, boxW, boxH;   // last drawn box, in GUI pixels
 
-    private static final int MENU_W = 190, GAP = 8;
+    private static final int MENU_W = 190, GAP = 8, ONLINE_DOT = 7;
+
+    /** Whether dynmap says this person (by the site's name) is online right now. */
+    private static boolean isOnline(String siteName) { return TerritoryManager.config().showOnlinePlayers && DynmapClient.find(siteName) != null; }
     private static volatile String selectedPlayer;
     private static int menuX, menuW, menuH, linkY0, linkY1;   // the player card's box (menuW 0 = not shown) and its copy-link line
     private static long copiedAt;
@@ -77,6 +81,22 @@ public final class CountryPanel {
         TerritoryManager.select(index.countryAtBlock(blockX, blockZ));
     }
 
+    /** A player clicked on the map (or anywhere else): open their card beside their country's panel. */
+    public static void openPlayer(String siteName) {
+        if (SettingsMenu.onClick() || WarMenu.onClick()) return;
+        TerritoryIndex index = TerritoryManager.index();
+        TerritoryFile.Player record = index.player(siteName);
+        selectedPlayer = siteName;
+        copiedAt = 0;
+        locality = null;
+        int country = -1;
+        if (record != null && record.current != null) {   // the player's nation, from their current affiliations
+            for (String a : record.current) for (int c = 0; c < index.countryCount() && country < 0; c++) if (a.toLowerCase().contains(index.countryName(c).toLowerCase())) country = c;
+        }
+        if (country >= 0) TerritoryManager.select(country);
+        else if (TerritoryManager.selected() < 0) { var online = DynmapClient.find(siteName); if (online != null) TerritoryManager.select(index.countryAtBlock((int) online.x(), (int) online.z())); }
+    }
+
     /** Click on one of the player's lordships: glide the map there. */
     private static boolean goTo(int mx, int my) {
         for (GoHit hit : goHits) {
@@ -110,6 +130,7 @@ public final class CountryPanel {
         Font font = mc.font;
         int innerW = WIDTH - 2 * PAD;
 
+        if (TerritoryManager.config().showOnlinePlayers) DynmapClient.wantPlayers();
         // ---- content ----
         List<PanelModel.Line> lines = PanelModel.build(index, c, loc);
         String title = "";
@@ -199,7 +220,7 @@ public final class CountryPanel {
         List<String> line = new ArrayList<>();
         int used = 0;
         for (int i = 0; i < names.size(); i++) {
-            int w = font.width(names.get(i)) + (i < names.size() - 1 ? font.width(", ") : 0);
+            int w = font.width(names.get(i)) + (i < names.size() - 1 ? font.width(", ") : 0) + (isOnline(names.get(i)) ? ONLINE_DOT : 0);
             if (!line.isEmpty() && used + w > innerW) { lines.add(line); line = new ArrayList<>(); used = 0; }
             line.add(names.get(i)); used += w;
         }
@@ -238,10 +259,12 @@ public final class CountryPanel {
                     for (int i = 0; i < line.size(); i++) {
                         String name = line.get(i);
                         String shown = Fit.text(font, name, boxW - 2 * PAD - 8);
-                        int w = font.width(shown);
+                        boolean online = isOnline(name);
+                        int w = font.width(shown) + (online ? ONLINE_DOT : 0);
                         boolean hover = mouseX >= x && mouseX < x + w && mouseY >= y - 1 && mouseY < y + LINE - 1;
                         boolean open = name.equals(selectedPlayer);
-                        g.drawString(font, shown, x, y, hover || open ? 0xFFFFFFFF : 0xFF8FD0FF, true);
+                        if (online) g.fill(x, y + 2, x + 4, y + 6, 0xFF3CD65A);
+                        g.drawString(font, shown, x + (online ? ONLINE_DOT : 0), y, hover || open ? 0xFFFFFFFF : 0xFF8FD0FF, true);
                         if (hover || open) g.fill(x, y + 9, x + w, y + 10, 0xFFFFFFFF);
                         if (recordHits) nameHits.add(new NameHit(x, y - 1, x + w, y + LINE - 1, name));
                         x += w;
@@ -283,6 +306,15 @@ public final class CountryPanel {
         int innerW = MENU_W - 2 * PAD;
         goHits.clear();
         List<Row> rows = new ArrayList<>();
+        if (TerritoryManager.config().showOnlinePlayers) {
+            DynmapClient.wantPlayers();
+            DynmapClient.Online online = DynmapClient.find(who);
+            if (online != null) {
+                TerritoryFile.Locality here = new TerritoryFile.Locality();
+                here.name = who; here.x = (int) Math.round(online.x()); here.z = (int) Math.round(online.z());
+                rows.add(new Go(PanelModel.wrap("Online now at " + here.x + ", " + here.z + " (click to go)", innerW, font::width), here));
+            } else if (DynmapClient.playersKnown()) addRow(rows, font, "Status", "Offline", innerW);
+        }
         if (p != null) {
             if (p.ign != null && !p.ign.isBlank()) addRow(rows, font, "In-game", p.ign, innerW);
             if (p.country != null && !p.country.isBlank()) addRow(rows, font, "From", p.country, innerW);

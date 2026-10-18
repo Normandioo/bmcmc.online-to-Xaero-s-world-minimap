@@ -38,6 +38,15 @@ public final class Config {
     public boolean showWarMenu = true;
     /** In the war and alliance views, grey out the countries that are not part of it (a bit slower to draw than leaving them alone). */
     public boolean warGreyOthers = true;
+    /** The site's dynmap (the site forwards /dynmap/ to the server's) and the world it shows. Used for online players and live war control. */
+    public String dynmapUrl = "https://bmcmc.online/dynmap/";
+    public String dynmapWorld = "world";
+    /** Seconds between asking dynmap who is online (only while the World Map is open). Minimum 2. */
+    public int dynmapRefreshSeconds = 5;
+    /** Show online players on the World Map, and "Online now" in the player card. */
+    public boolean showOnlinePlayers = true;
+    /** Wars marked "live" on the site take who holds each city from dynmap's markers, as the site does. */
+    public boolean liveWar = true;
     /** Where the site's logo (the BMC button's picture) comes from. */
     public String logoUrl = "https://bmcmc.online/favicon.ico";
 

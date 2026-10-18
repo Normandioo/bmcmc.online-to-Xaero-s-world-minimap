@@ -79,11 +79,11 @@ public final class WarPaint {
         }
         Map<Integer, Integer> provinces = new HashMap<>();
         Map<Integer, int[]> bounds = new HashMap<>();
-        if (war.captured != null) for (TerritoryFile.Captured c : war.captured) {
+        for (TerritoryFile.Captured c : LiveControl.captured(index, war)) {
             int province = index.provinceAtBlock(c.x, c.z);
             if (province < 0) continue;
             int color = "contested".equals(c.state) ? CONTESTED : "uncontrolled".equals(c.state) ? UNCONTROLLED
-                    : sideOf.getOrDefault(c.holderKey, NEUTRAL);
+                    : c.liveSide != null && c.liveSide < sides.size() ? sideColor(sides.get(c.liveSide), c.liveSide) : sideOf.getOrDefault(c.holderKey, NEUTRAL);
             provinces.put(province, color);
             bounds.put(province, index.provinceBoundsOf(province));
         }

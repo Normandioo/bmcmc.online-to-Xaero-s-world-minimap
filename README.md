@@ -135,3 +135,14 @@ Botão **WAR** no canto superior direito do World Map (ou `/territories war`). T
 - Removido o desenho próprio das cores de guerra (1.6.0/1.6.1): as cores de guerra e de aliança voltaram a ser pintadas pelo Xaero's, como na 1.5.x, sem nada por cima do mapa. A opção "Instant war colours" e `warOverlay` saíram.
 - Mantido da 1.6.1: a atualização automática só manda o Xaero's repintar quando formas ou cores dos territórios mudaram.
 - Mantido da 1.5.0: ao abrir/trocar uma guerra, só as regiões cujas cores mudam são repintadas (as mais próximas de você primeiro); desligar "Grey out others in wars" no menu BMC deixa isso bem mais rápido.
+
+## 1.7.0: dynmap em tempo real
+
+O mod passa a ler o dynmap do servidor pelo mesmo endereço que o site usa (`https://bmcmc.online/dynmap/`, que o site repassa ao servidor). Só consulta enquanto o World Map está aberto.
+
+- **Jogadores online no mapa:** ponto verde com o nome do jogador no site (o nome do jogo é ligado ao do site pelo `ign` do `players.json`); clicar abre o cartão dele. Quem o dynmap esconde continua escondido. Atualiza a cada `dynmapRefreshSeconds` (padrão 5, mínimo 2).
+- **Cartão do jogador:** linha **Online now at X, Z (click to go)**, que leva a câmera até ele, ou **Status: Offline**. Na lista de população do país, quem está online ganha um ponto verde.
+- **Controle de guerra ao vivo:** guerras marcadas `"live": true` no `diplomacy.json` (sem `map`) leem no dynmap quem segura cada cidade, igual ao site (`js/warlive.js`): o marcador é achado pelo id `Nome(País)` (ou o id do mapa `marker__Nome-lp-País-rp-__Tipo`), pelo nome, ou pelo marcador mais próximo (até 8 blocos); o ícone diz quem segura: `...Red` = primeiro lado, `...Blue` = segundo, `...Green` = terceiro, `...Contested`, `...Uncontrolled`; ícone sem isso não muda nada. O que o dynmap diz vale por cima do `captured`. A lista de capturadas, o "quem está ganhando" e as cores do mapa usam isso, e atualizam quando os marcadores mudam (a cada 8 s com o menu da guerra aberto). A lista mostra "Live from dynmap".
+- **Exportador do site:** `war.live` agora vai no `territories.json` (precisa rodar o workflow para a guerra aparecer como ao vivo).
+- **Menu BMC:** "Online players" e "Live war control". Config: `dynmapUrl`, `dynmapWorld`, `dynmapRefreshSeconds`, `showOnlinePlayers`, `liveWar`.
+- Só vale para o mundo principal (`world`). Marcadores de mar (sea tiles) não são lidos.

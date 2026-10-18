@@ -14,6 +14,7 @@ public final class WorldMapElements {
         MapElementRenderHandler handler = WorldMap.mapElementRenderHandler;
         if (handler == null || handler == registeredOn) return;
         handler.add(LocalityRenderer.create());
+        handler.add(PlayerRenderer.create());
         registeredOn = handler;
     }
 }

@@ -30,6 +30,7 @@ public final class TerritoryIndex {
     private final Map<String, Integer> countryByNameId;
     private TerritoryFile.WarData war = new TerritoryFile.WarData();
     private Map<String, TerritoryFile.Player> players = Map.of();   // lower-case site name -> record
+    private Map<String, String> siteNameByIgn = Map.of();            // lower-case in-game name -> the site's name for the person
     private final boolean[] chunkHas;                     // chunks with at least one claimed block
     private final boolean[] regionHas;                    // 32x32 chunk regions
     private final long[] regionCountries;                // 4 longs per region: which countries have blocks in it
@@ -124,6 +125,9 @@ public final class TerritoryIndex {
             Map<String, TerritoryFile.Player> byName = new HashMap<>();
             file.players.forEach((k, v) -> { if (k != null && v != null) byName.put(k.toLowerCase(), v); });
             built.players = byName;
+            Map<String, String> ign = new HashMap<>();
+            file.players.forEach((k, v) -> { if (k != null && v != null && v.ign != null && !v.ign.isBlank()) ign.put(v.ign.trim().toLowerCase(), k); });
+            built.siteNameByIgn = ign;
         }
         if (file.war != null) built.war = file.war;
         return built;
@@ -250,6 +254,13 @@ public final class TerritoryIndex {
 
     /** The site's record of this person, or null (the file may not carry players at all). */
     public TerritoryFile.Player player(String name) { return name == null ? null : players.get(name.toLowerCase()); }
+
+    /** The site's name for the person who plays under this in-game name (or the name itself when the site doesn't know it). */
+    public String siteNameForIgn(String ign) {
+        if (ign == null) return "";
+        String site = siteNameByIgn.get(ign.trim().toLowerCase());
+        return site != null ? site : ign;
+    }
 
     public TerritoryFile.Country countryData(int country) { return countryData.get(country); }
     public List<TerritoryFile.Locality> localities() { return localities; }
