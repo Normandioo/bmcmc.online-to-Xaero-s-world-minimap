@@ -16,11 +16,7 @@ import xaero.map.gui.GuiMap;
  * (button 0 = left): which block is under the mouse, and which of our cities, if any, was clicked.
  */
 @Mixin(value = GuiMap.class, remap = false)
-public abstract class GuiMapClickMixin implements CameraTarget, com.cumania.territories.compat.CameraView {
-    @Shadow private double cameraX;
-    @Shadow private double cameraZ;
-    @Shadow private double scale;
-    @Shadow private double screenScale;
+public abstract class GuiMapClickMixin implements CameraTarget {
 
     /** The same field Xaero fills for "hop to coordinates": the map then glides there on its own. */
     @Shadow private int[] cameraDestination;
@@ -44,11 +40,4 @@ public abstract class GuiMapClickMixin implements CameraTarget, com.cumania.terr
         cameraDestination = new int[]{blockX, blockZ};
         if (minZoom > 0 && destScale < minZoom) destScale = minZoom;
     }
-
-    @Override public double cumania$cameraX() { return cameraX; }
-    @Override public double cumania$cameraZ() { return cameraZ; }
-    @Override public double cumania$scale() { return scale; }
-    @Override public double cumania$screenScale() { return screenScale; }
-    @Override public int cumania$mouseBlockX() { return mouseBlockPosX; }
-    @Override public int cumania$mouseBlockZ() { return mouseBlockPosZ; }
 }

@@ -19,13 +19,7 @@ public final class WarPaint {
 
     private static volatile Paint current;
     public static Paint current() { return current; }
-    public static void set(Paint paint) {
-        current = paint;
-        if (paint == null) com.cumania.territories.compat.WarOverlay.clear();
-    }
-
-    /** The paint Xaero's should apply when it redraws: none while our own overlay is drawing it. */
-    public static Paint xaeroPaint() { return com.cumania.territories.compat.WarOverlay.handles() ? null : current; }
+    public static void set(Paint paint) { current = paint; }
 
     /**
      * Switches to another paint and tells the map to redraw only the regions whose colours actually change
@@ -34,10 +28,6 @@ public final class WarPaint {
     public static void apply(TerritoryIndex index, Paint next) {
         Paint old = current;
         current = next;
-        if (com.cumania.territories.compat.WarOverlay.handles()) {   // instant: nothing for Xaero's to redraw
-            com.cumania.territories.compat.WarOverlay.set(index, next);
-            return;
-        }
         boolean[] changed = new boolean[index.countryCount()];
         for (int c = 0; c < changed.length; c++) changed[c] = effective(old, c) != effective(next, c);
         java.util.List<int[]> boxes = new java.util.ArrayList<>();

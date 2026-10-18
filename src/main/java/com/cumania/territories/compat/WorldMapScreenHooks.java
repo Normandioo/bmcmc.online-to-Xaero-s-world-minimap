@@ -9,7 +9,7 @@ public final class WorldMapScreenHooks {
     public static void register() {
         ScreenEvents.AFTER_INIT.register((client, screen, scaledWidth, scaledHeight) -> {
             if (screen.getClass().getName().equals("xaero.map.gui.GuiMap")) {
-                ScreenEvents.afterRender(screen).register((s, graphics, mouseX, mouseY, tickDelta) -> { if (s instanceof CameraView view) WarOverlay.render(graphics, mouseX, mouseY, view); CountryPanel.render(graphics, mouseX, mouseY); WarMenu.render(graphics, mouseX, mouseY); SettingsMenu.render(graphics, mouseX, mouseY); });
+                ScreenEvents.afterRender(screen).register((s, graphics, mouseX, mouseY, tickDelta) -> { CountryPanel.render(graphics, mouseX, mouseY); WarMenu.render(graphics, mouseX, mouseY); SettingsMenu.render(graphics, mouseX, mouseY); });
             }
         });
     }

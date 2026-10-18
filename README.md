@@ -129,3 +129,9 @@ Botão **WAR** no canto superior direito do World Map (ou `/territories war`). T
 
 - O desenho próprio das cores de guerra (1.6.0) usava milhares de retângulos por quadro e derrubava o FPS. Agora ele guarda 5 níveis de detalhe (células de 4 a 64 blocos) e usa o mais grosso que ainda passa de ~6 pixels na tela: de ~5000 preenchimentos por quadro caiu para menos de 500 (menos ainda com zoom).
 - A atualização automática (ao entrar no mundo e a cada 30 min) só manda o Xaero's repintar o mapa quando formas ou cores dos territórios realmente mudaram. Um export novo só com jogadores, guerras etc. não mexe mais no mapa.
+
+## 1.6.2: volta a pintar só pelo Xaero's
+
+- Removido o desenho próprio das cores de guerra (1.6.0/1.6.1): as cores de guerra e de aliança voltaram a ser pintadas pelo Xaero's, como na 1.5.x, sem nada por cima do mapa. A opção "Instant war colours" e `warOverlay` saíram.
+- Mantido da 1.6.1: a atualização automática só manda o Xaero's repintar quando formas ou cores dos territórios mudaram.
+- Mantido da 1.5.0: ao abrir/trocar uma guerra, só as regiões cujas cores mudam são repintadas (as mais próximas de você primeiro); desligar "Grey out others in wars" no menu BMC deixa isso bem mais rápido.

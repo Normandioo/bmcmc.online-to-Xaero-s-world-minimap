@@ -38,8 +38,6 @@ public final class Config {
     public boolean showWarMenu = true;
     /** In the war and alliance views, grey out the countries that are not part of it (a bit slower to draw than leaving them alone). */
     public boolean warGreyOthers = true;
-    /** Draw the war/alliance colours ourselves over the map (instant) instead of making Xaero's repaint every region (slow). */
-    public boolean warOverlay = true;
     /** Where the site's logo (the BMC button's picture) comes from. */
     public String logoUrl = "https://bmcmc.online/favicon.ico";
 
