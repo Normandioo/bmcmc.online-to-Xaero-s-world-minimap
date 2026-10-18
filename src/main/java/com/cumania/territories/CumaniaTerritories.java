@@ -1,6 +1,7 @@
 package com.cumania.territories;
 
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import org.slf4j.Logger;
@@ -12,15 +13,21 @@ public final class CumaniaTerritories implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
-        com.cumania.territories.data.DynmapClient.onMarkersChanged(com.cumania.territories.compat.WarMenu::liveChanged);
+        boolean worldMapLoaded = FabricLoader.getInstance().isModLoaded("xaeroworldmap");
+        com.cumania.territories.data.DynmapClient.onMarkersChanged(() -> {
+            if (worldMapLoaded) com.cumania.territories.compat.WarMenu.liveChanged();
+            CaptureAlerts.checkSoon();
+        });
+        // a live war keeps being followed in the background (for the chat alerts) even with the map closed
+        int[] ticks = {0};
+        ClientTickEvents.END_CLIENT_TICK.register(client -> { if (++ticks[0] >= 20) { ticks[0] = 0; CaptureAlerts.keepWatching(); } });
         TerritoryManager.init(FabricLoader.getInstance().getConfigDir());
         com.cumania.territories.command.TerritoryCommand.register();
-        boolean worldMap = FabricLoader.getInstance().isModLoaded("xaeroworldmap");
-        if (worldMap) com.cumania.territories.compat.WorldMapScreenHooks.register();
+        if (worldMapLoaded) com.cumania.territories.compat.WorldMapScreenHooks.register();
         // Pick up changes the site published since last time whenever you join a world
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
             TerritoryManager.reload();
-            if (worldMap) {
+            if (worldMapLoaded) {
                 com.cumania.territories.compat.CountryPanel.clear();
                 com.cumania.territories.compat.WorldMapElements.registerOnce();   // Xaero's has finished loading by now
             }

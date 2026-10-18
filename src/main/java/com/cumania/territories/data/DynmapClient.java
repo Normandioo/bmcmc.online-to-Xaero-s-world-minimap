@@ -42,7 +42,8 @@ public final class DynmapClient {
     private static volatile List<Marker> markers = List.of();
     private static volatile long markersAt;
     private static volatile boolean playersFailed;
-    private static volatile long wantMap, wantMarkers;      // last time the map was open / a live war was being looked at
+    private static volatile long playersEvery = 1000;           // how often the players are being asked for, so the map can glide between answers
+    private static volatile long wantMap, wantMarkers, wantBackground;   // last time the map was open / a live war was being looked at / the chat alerts needed the markers
     private static long timestamp;                          // dynmap's, sent back so it only sends what changed
     private static long lastPlayersPoll, lastMarkersPoll;
     private static final AtomicBoolean busyPlayers = new AtomicBoolean(), busyMarkers = new AtomicBoolean();
@@ -51,6 +52,10 @@ public final class DynmapClient {
     public static List<Online> players() { return players; }
     public static List<Marker> markers() { return markers; }
     public static long markersAt() { return markersAt; }
+    /** Milliseconds between answers about the players, for gliding the markers from one spot to the next. */
+    public static long playersEveryMs() { return playersEvery; }
+    /** When the player list last changed hands (millis), to tell a new answer from an old one. */
+    public static long playersAt() { return playersAt; }
     /** True once dynmap has answered recently, so "not online" can be told from "don't know". */
     public static boolean playersKnown() { return playersAt != 0 && System.currentTimeMillis() - playersAt < 60_000; }
     public static boolean markersKnown() { return markersAt != 0 && System.currentTimeMillis() - markersAt < 120_000; }
@@ -60,6 +65,14 @@ public final class DynmapClient {
     public static void wantPlayers() { wantMap = System.currentTimeMillis(); ensureStarted(); }
     /** A live war is being looked at: keep the markers fresh too. */
     public static void wantMarkers() { wantMarkers = System.currentTimeMillis(); wantMap = wantMarkers; ensureStarted(); }
+    /** No map open, but a live war should still be followed (for the chat alerts): the markers, less often. */
+    public static void wantMarkersInBackground() { wantBackground = System.currentTimeMillis(); ensureStarted(); }
+
+    /** Where a player's face is (what the site shows next to them on its map). */
+    public static String faceUrl(String account) {
+        String base = base();
+        return base == null || account == null || account.isBlank() ? null : base + "tiles/faces/32x32/" + URLEncoder.encode(account, StandardCharsets.UTF_8) + ".png";
+    }
 
     /** The online player with this site name or in-game name, or null. */
     public static Online find(String siteOrIgn) {
@@ -73,7 +86,7 @@ public final class DynmapClient {
     private static synchronized void ensureStarted() {
         if (scheduler != null) return;
         scheduler = Executors.newSingleThreadScheduledExecutor(r -> { Thread t = new Thread(r, "cumania-dynmap"); t.setDaemon(true); return t; });
-        scheduler.scheduleWithFixedDelay(DynmapClient::tick, 0, 1, TimeUnit.SECONDS);
+        scheduler.scheduleWithFixedDelay(DynmapClient::tick, 0, 200, TimeUnit.MILLISECONDS);
     }
 
     private static void tick() {
@@ -81,9 +94,13 @@ public final class DynmapClient {
             var config = TerritoryManager.config();
             if (!config.showOnlinePlayers && !config.liveWar) return;
             long now = System.currentTimeMillis();
-            long every = Math.max(2, config.dynmapRefreshSeconds) * 1000L;
+            long every = Math.max(500, config.dynmapRefreshMs);
+            playersEvery = every;
             if (now - wantMap < 3000 && now - lastPlayersPoll >= every && config.showOnlinePlayers) { lastPlayersPoll = now; pollPlayers(); }
-            if (now - wantMarkers < 3000 && now - lastMarkersPoll >= 8000 && config.liveWar) { lastMarkersPoll = now; pollMarkers(); }
+            boolean watching = now - wantMarkers < 3000;
+            boolean background = now - wantBackground < 3000;
+            long markersEvery = watching ? 8000 : 20000;
+            if ((watching || background) && now - lastMarkersPoll >= markersEvery && config.liveWar) { lastMarkersPoll = now; pollMarkers(); }
         } catch (RuntimeException e) {
             CumaniaTerritories.LOGGER.debug("dynmap tick failed", e);
         }

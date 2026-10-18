@@ -263,6 +263,24 @@ public final class TerritoryIndex {
     }
 
     public TerritoryFile.Country countryData(int country) { return countryData.get(country); }
+
+    private volatile Map<String, Integer> nationByPlayer;
+
+    /** The country this player is in (by the countries' population lists), or -1. */
+    public int nationOfPlayer(String siteName) {
+        if (siteName == null) return -1;
+        Map<String, Integer> map = nationByPlayer;
+        if (map == null) {
+            map = new HashMap<>();
+            for (int c = 0; c < countryData.size(); c++) {
+                var population = countryData.get(c).population;
+                if (population != null) for (String n : population) if (n != null) map.putIfAbsent(n.trim().toLowerCase(), c);
+            }
+            nationByPlayer = map;
+        }
+        Integer c = map.get(siteName.trim().toLowerCase());
+        return c == null ? -1 : c;
+    }
     public List<TerritoryFile.Locality> localities() { return localities; }
 
     /** The localities this player is lord of (a shared lordship lists its lords separated by commas). */

@@ -41,12 +41,14 @@ public final class Config {
     /** The site's dynmap (the site forwards /dynmap/ to the server's) and the world it shows. Used for online players and live war control. */
     public String dynmapUrl = "https://bmcmc.online/dynmap/";
     public String dynmapWorld = "world";
-    /** Seconds between asking dynmap who is online (only while the World Map is open). Minimum 2. */
-    public int dynmapRefreshSeconds = 5;
+    /** Milliseconds between asking dynmap who is online (only while the World Map is open). Minimum 500. */
+    public int dynmapRefreshMs = 1000;
     /** Show online players on the World Map, and "Online now" in the player card. */
     public boolean showOnlinePlayers = true;
     /** Wars marked "live" on the site take who holds each city from dynmap's markers, as the site does. */
     public boolean liveWar = true;
+    /** Say in the chat when a city is captured (or contested) in a live war, even with the map closed. */
+    public boolean chatAlerts = true;
     /** Where the site's logo (the BMC button's picture) comes from. */
     public String logoUrl = "https://bmcmc.online/favicon.ico";
 
@@ -64,6 +66,7 @@ public final class Config {
         }
         c.fillAlpha = Math.max(0, Math.min(255, c.fillAlpha));
         c.borderAlpha = Math.max(0, Math.min(255, c.borderAlpha));
+        c.dynmapRefreshMs = Math.max(500, c.dynmapRefreshMs);
         c.save(file);   // writes defaults the first time, and adds options new versions introduce
         return c;
     }

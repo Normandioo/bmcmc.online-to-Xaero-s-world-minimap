@@ -72,7 +72,7 @@ public final class SettingsMenu {
         if (!open) { panelH = 0; return; }
 
         // rows
-        int rowCount = 11;
+        int rowCount = 12;
         panelH = HEADER_H + 7 + rowCount * ROW + 14;
         panelH = Math.min(panelH, screenH - TOP - 6);
         int x0 = Math.max(2, Math.min(btnX + BTN - PW, screenW - PW - 2)), y0 = TOP;
@@ -98,6 +98,7 @@ public final class SettingsMenu {
         y = toggle(g, font, x0, y, "Province in tooltip", c.showProvince, () -> { c.showProvince = !c.showProvince; changed(false); });
         y = toggle(g, font, x0, y, "Online players", c.showOnlinePlayers, () -> { c.showOnlinePlayers = !c.showOnlinePlayers; changed(false); });
         y = toggle(g, font, x0, y, "Live war control", c.liveWar, () -> { c.liveWar = !c.liveWar; changed(false); WarMenu.liveChanged(); });
+        y = toggle(g, font, x0, y, "Chat alerts for captures", c.chatAlerts, () -> { c.chatAlerts = !c.chatAlerts; changed(false); com.cumania.territories.data.WarWatch.reset(); });
         y = toggle(g, font, x0, y, "Grey out others in wars", c.warGreyOthers, () -> { c.warGreyOthers = !c.warGreyOthers; changed(true); });
         g.drawString(font, Fit.text(font, "Saved to config/cumania_territories.json", PW - 2 * PAD), x0 + PAD, y + 3, 0xFF707070, false);
     }
