@@ -22,10 +22,12 @@ import java.util.Map;
 public final class WarOverlay {
     private WarOverlay() {}
 
-    private static final int CELL = 4;
+    /** Cell sizes in blocks: zoomed out, big cells keep the number of fills per frame small (fills are what costs frame time). */
+    private static final int[] CELLS = {4, 8, 16, 32, 64};
+    private static final double MIN_CELL_PIXELS = 6;
     private record Rect(int x0, int z0, int x1, int z1, int argb) {}   // in blocks, x1/z1 exclusive
 
-    private static volatile Rect[] rects = new Rect[0];
+    private static volatile Rect[][] rects = new Rect[0][];
     private static volatile boolean broken;
     private static int misses, lastMouseX, lastMouseY;
     private static double lastCamX, lastCamZ, lastScale;
@@ -33,11 +35,17 @@ public final class WarOverlay {
     /** Whether the overlay is in charge of the war colours (otherwise Xaero's paints them). */
     public static boolean handles() { return TerritoryManager.config().warOverlay && !broken; }
 
-    public static void clear() { rects = new Rect[0]; }
+    public static void clear() { rects = new Rect[0][]; }
 
     /** Cuts the paint into rectangles. Fast enough to do on the spot. */
     public static void set(TerritoryIndex index, WarPaint.Paint paint) {
         if (paint == null || index.isEmpty()) { clear(); return; }
+        Rect[][] all = new Rect[CELLS.length][];
+        for (int i = 0; i < CELLS.length; i++) all[i] = build(index, paint, CELLS[i]);
+        rects = all;
+    }
+
+    private static Rect[] build(TerritoryIndex index, WarPaint.Paint paint, int CELL) {
         int[] b = index.blockBounds();
         int minX = b[0], minZ = b[1], w = (b[2] + CELL - 1) / CELL, h = (b[3] + CELL - 1) / CELL;
         boolean grey = TerritoryManager.config().warGreyOthers;
@@ -90,13 +98,13 @@ public final class WarOverlay {
             }
             Map<Long, int[]> t = open; open = next; next = t;
         }
-        rects = out.toArray(new Rect[0]);
+        return out.toArray(new Rect[0]);
     }
 
     /** Draws the rectangles in view. Call after the map has rendered, before our panels. */
     public static void render(GuiGraphics g, int mouseX, int mouseY, CameraView view) {
-        Rect[] list = rects;
-        if (list.length == 0 || !handles()) return;
+        Rect[][] levels = rects;
+        if (levels.length == 0 || !handles()) return;
         Minecraft mc = Minecraft.getInstance();
         double scale = view.cumania$scale(), gui = view.cumania$screenScale();
         if (scale <= 0 || gui <= 0) return;
@@ -120,6 +128,9 @@ public final class WarOverlay {
 
         int guiW = mc.getWindow().getGuiScaledWidth(), guiH = mc.getWindow().getGuiScaledHeight();
         double k = scale / gui;
+        int level = 0;   // the finest cells that are still at least a few pixels wide
+        while (level < CELLS.length - 1 && CELLS[level] * k < MIN_CELL_PIXELS) level++;
+        Rect[] list = levels[level];
         double ox = realW / 2 / gui, oz = realH / 2 / gui;
         for (Rect r : list) {
             int sx0 = (int) Math.floor((r.x0 - camX) * k + ox), sx1 = (int) Math.ceil((r.x1 - camX) * k + ox);

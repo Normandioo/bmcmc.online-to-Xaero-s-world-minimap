@@ -29,6 +29,7 @@ public final class TerritoryManager {
     private static volatile TerritoryIndex index = TerritoryIndex.EMPTY;
     private static volatile int version = 1;
     private static volatile String generated = "";
+    private static int paintedFingerprint;
     private static final AtomicBoolean loading = new AtomicBoolean();
     private static final HttpClient HTTP = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
     private static ScheduledExecutorService scheduler;
@@ -110,13 +111,23 @@ public final class TerritoryManager {
     private static void apply(TerritoryFile file, boolean refreshMaps) {
         TerritoryIndex built = TerritoryIndex.build(file);
         if (built.isEmpty()) { CumaniaTerritories.LOGGER.warn("The territories file has no territories"); return; }
-        boolean same = file.generated != null && file.generated.equals(generated) && !index.isEmpty();
+        // only what Xaero's paints matters: if the shapes and colours are the same as before (a new export with new players or wars, say), leave the map alone
+        int print = paintFingerprint(file);
+        boolean same = !index.isEmpty() && print == paintedFingerprint;
+        paintedFingerprint = print;
         index = built;
         selected = -1;   // country numbers may have changed
         com.cumania.territories.data.WarPaint.set(null);
         generated = file.generated == null ? "" : file.generated;
         CumaniaTerritories.LOGGER.info("Territories: {} provinces, {} countries ({})", built.provinceCount(), built.countryCount(), generated);
-        if (refreshMaps && !same) changed(); else version++;
+        if (!same) { if (refreshMaps) changed(); else version++; }
+    }
+
+    private static int paintFingerprint(TerritoryFile file) {
+        com.google.gson.Gson gson = new com.google.gson.Gson();
+        int h = gson.toJson(file.provinces).hashCode();
+        if (file.countries != null) for (var e : file.countries.entrySet()) h = 31 * h + (e.getKey() + "=" + (e.getValue() == null ? "" : e.getValue().color)).hashCode();
+        return h;
     }
 
     /** The map's colours changed (the war menu painted or cleared it): redraw. */

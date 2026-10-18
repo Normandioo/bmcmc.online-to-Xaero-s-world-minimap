@@ -124,3 +124,8 @@ Botão **WAR** no canto superior direito do World Map (ou `/territories war`). T
 - Como o mod precisa saber onde cada bloco está na tela (calculado a partir da câmera do Xaero's), a cada quadro ele confere isso com o bloco que o próprio Xaero's diz estar sob o mouse. Se algum dia não bater, o desenho próprio se desliga sozinho (aviso no log) e volta o método antigo, mais lento.
 - Menu BMC: "Instant war colours" liga/desliga isso (config `warOverlay`).
 - Diferenças: as cores de guerra aparecem só no World Map (o minimapa continua com as cores normais), as fronteiras são um pouco mais "quadradas" (células de 4 blocos) e as cores ficam por cima dos ícones das cidades, de leve.
+
+## 1.6.1: menos peso no mapa
+
+- O desenho próprio das cores de guerra (1.6.0) usava milhares de retângulos por quadro e derrubava o FPS. Agora ele guarda 5 níveis de detalhe (células de 4 a 64 blocos) e usa o mais grosso que ainda passa de ~6 pixels na tela: de ~5000 preenchimentos por quadro caiu para menos de 500 (menos ainda com zoom).
+- A atualização automática (ao entrar no mundo e a cada 30 min) só manda o Xaero's repintar o mapa quando formas ou cores dos territórios realmente mudaram. Um export novo só com jogadores, guerras etc. não mexe mais no mapa.
