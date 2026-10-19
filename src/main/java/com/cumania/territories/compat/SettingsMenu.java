@@ -29,7 +29,6 @@ public final class SettingsMenu {
     private static final List<Hit> hits = new ArrayList<>();
     private static long repaintAt;   // clicking +/- many times redraws the map once, shortly after the last click
 
-    public static boolean isOpen() { return open; }
     public static void close() { open = false; }
     public static void toggle() { toggle(0); }
     private static void toggle(int which) {

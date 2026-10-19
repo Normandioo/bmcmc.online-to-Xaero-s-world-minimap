@@ -45,7 +45,6 @@ public final class TerritoryFile {
     /** Times are ISO UTC ("2026-10-12T23:19:00Z"); null when not set. */
     public static final class WarInfo {
         public String id, name, type, rule, started, ended, theater, notes;
-        public boolean noAllies;
         /** The site reads who holds its cities from dynmap while this is set. */
         public boolean live;
         public List<Side> sides;
