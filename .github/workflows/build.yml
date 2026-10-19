@@ -35,9 +35,8 @@ jobs:
       - name: PROBE xaero api (temporary)
         run: |
           J=libs/xaeros-minimap.jar
-          unzip -Z1 $J | grep -E '^xaero/hud/' | grep -v '\$' | sed 's/\.class//' | head -150 | tr '\n' ' ' > /tmp/classes.txt
-          echo "::notice title=classes::$(cat /tmp/classes.txt)"
-          for c in xaero.hud.module.HudModule xaero.hud.minimap.module.MinimapSession xaero.hud.minimap.BuiltInHudModules xaero.hud.minimap.module.MinimapModule; do
+          echo "::notice title=classes::$(unzip -Z1 $J | grep -E '^xaero/hud/(module|pos|render/module|minimap/module)' | grep -v '\$' | sed 's/\.class//' | tr '\n' ' ')"
+          for c in xaero.hud.module.ModuleTransform xaero.hud.module.ModuleSession xaero.hud.render.module.IModuleRenderer xaero.hud.pos.HudPos xaero.hud.module.ModuleManager; do
             out=$(javap -public -cp $J $c 2>&1 | head -60 | tr '\n' '|' | sed 's/%/%25/g')
             echo "::notice title=$c::$out"
           done
