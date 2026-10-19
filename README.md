@@ -171,4 +171,6 @@ O site passou a ter **limites de captura** (`gaia/capture.svg`): a área que um 
 - O contorno é de 1 bloco, como as bordas dos países, e os traços são de 8 blocos com 5 de intervalo; com muito zoom out viram pontilhado.
 - **Tipo da cidade com a cor da guerra:** numa guerra ao vivo o site passou a exportar o `kind` das cidades com a cor do lado (`SmallRed`, `FortBlue`, `SmallCapitalRed`). O mod tira esse sufixo ao ler o arquivo, para que ícones, regra de capital e os pontos por cidade da guerra continuem certos.
 - **Contorno em guerra mais visível:** no painel da guerra a terra já é pintada com as cores dos lados, e o traço sumia nela. Agora o traço fica numa cor mais clara, cheia, com uma sombra escura nos blocos ao lado.
+- **Tipo da cidade com a cor da guerra:** numa guerra ao vivo o site passou a exportar o `kind` das cidades com a cor do lado (`SmallRed`, `FortBlue`, `SmallCapitalRed`). O mod tira esse sufixo ao ler o arquivo, para que ícones, regra de capital e os **pontos (valor) de cada cidade** na guerra continuem certos. Sem isso, 16 cidades perdiam o valor e o total de 4 países da guerra deixava de somar 150.
+- **Contorno em guerra mais visível:** no painel da guerra a terra já é pintada com as cores dos lados, e o traço sumia nela. Agora o traço fica numa cor mais clara, cheia, com uma sombra escura nos blocos ao lado.
 
