@@ -88,7 +88,7 @@ public final class WarMarkers {
             if (p.world() == null || !p.world().equalsIgnoreCase(world)) continue;
             int nation = index.nationOfPlayer(p.siteName());
             if (nation < 0) continue;
-            int side = WarScore.sideOfCountry(war, index.countryName(nation));
+            int side = WarScore.sideOfCountry(war, index.countryId(nation));
             if (side < 0) continue;
             int province = index.provinceAtBlock((int) Math.floor(p.x()), (int) Math.floor(p.z()));
             for (TerritoryFile.Locality l : index.localities()) {
