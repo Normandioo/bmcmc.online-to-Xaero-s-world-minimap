@@ -4,6 +4,8 @@ import com.cumania.territories.TerritoryManager;
 import com.cumania.territories.data.IconCache;
 import com.cumania.territories.data.TerritoryFile;
 import com.cumania.territories.data.TerritoryIndex;
+import com.cumania.territories.data.WarFront;
+import com.cumania.territories.data.WarPaint;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.resources.ResourceKey;
@@ -124,7 +126,7 @@ public final class LocalityRenderer extends ElementRenderer<TerritoryFile.Locali
         int rank = rank(l);
         var config = TerritoryManager.config();
         int r, o = isCapital(l) ? 2 : 1;
-        IconCache.Icon icon = "simple".equalsIgnoreCase(config.markerStyle) ? null : IconCache.get(config.markerIconUrl, l.kind);
+        IconCache.Icon icon = "simple".equalsIgnoreCase(config.markerStyle) ? null : IconCache.get(config.markerIconUrl, l.iconKind != null ? l.iconKind : l.kind);
         if (icon != null) {
             // the site's own marker, centred on the city
             int half = icon.size() / 2;
@@ -143,6 +145,10 @@ public final class LocalityRenderer extends ElementRenderer<TerritoryFile.Locali
 
         boolean focus = Focus.is(l);
         if (focus) drawFocus(graphics, r + o);
+        else if (WarPaint.current() != null) {
+            Integer play = WarFront.playRgb(l);
+            if (play != null) drawInPlay(graphics, r + o, play);
+        }
 
         if (TerritoryManager.config().showLocalityNames && (hovered || focus || effectiveScale(context) >= NAME_FROM[rank])) {
             var font = Minecraft.getInstance().font;
@@ -150,6 +156,18 @@ public final class LocalityRenderer extends ElementRenderer<TerritoryFile.Locali
             graphics.drawString(font, l.name, -w / 2, r + o + 2, 0xFFFFFFFF, true);
         }
         return true;
+    }
+
+    /** An In Play city: two rings in its holder's colour that swell and fade, over and over (a calmer cousin of the focus effect). */
+    private static void drawInPlay(MapElementGraphics g, int base, int rgb) {
+        long period = 1600;
+        float t0 = (System.currentTimeMillis() % period) / (float) period;
+        frame(g, base + 2, 1, argb(230, rgb));
+        for (int ring = 0; ring < 2; ring++) {
+            float t = (t0 + ring * 0.5f) % 1f;
+            int alpha = (int) (210 * (1f - t));
+            if (alpha > 4) frame(g, base + 3 + (int) (t * 14), 2, argb(alpha, rgb));
+        }
     }
 
     /** A steady gold frame plus two rings that grow outwards and fade, repeating while the focus lasts. */

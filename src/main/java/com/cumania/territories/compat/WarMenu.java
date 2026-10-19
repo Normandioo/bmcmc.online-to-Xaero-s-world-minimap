@@ -335,31 +335,59 @@ public final class WarMenu {
     /** The war's front while its rows are built (cityRow shows each city's In Play / Encircled). */
     private static WarFront FRONT;
 
-    /** Law 7 on top of the points: what is In Play or Encircled, ties Staff must settle, and who has Capitulated (7.9). */
+    /** A colour that breathes between itself and white, for the rows that mark In Play cities. */
+    private static int pulse(int rgb) {
+        float t = (float) (0.5 + 0.5 * Math.sin(System.currentTimeMillis() / 260.0));
+        int r = (rgb >> 16 & 255), g = (rgb >> 8 & 255), bl = rgb & 255;
+        r += (int) ((255 - r) * t * 0.7); g += (int) ((255 - g) * t * 0.7); bl += (int) ((255 - bl) * t * 0.7);
+        return (r << 16) | (g << 8) | bl;
+    }
+
+    /** Law 7 on top of the points, kept short: a line per side, then two lists that stay closed until asked for. */
     private static void addFront(List<L> out, Font font, int width, TerritoryFile.WarInfo war, WarFront g) {
         FRONT = g;
+        WarFront.view(g);
         if (!g.hasNetwork() || war.sides == null) return;
         out.add(title("Front (Law 7)", TEXT, -1));
+        List<TerritoryFile.Locality> play = new ArrayList<>();
         for (int i = 0; i < war.sides.size(); i++) {
-            int play = 0, enc = 0;
+            int n = 0, enc = 0;
             for (var u : g.units()) {
                 if (u.control != i) continue;
-                if (u.inPlay) play += u.members.size();
+                if (u.inPlay) { n += u.members.size(); play.addAll(u.members); }
                 if (u.encircled) enc += u.members.size();
             }
-            out.add(new L(war.sides.get(i).name + ":  " + play + " in play,  " + enc + " encircled", TEXT, null, WarPaint.sideColor(war.sides.get(i), i), false));
+            out.add(new L(war.sides.get(i).name, TEXT, null, WarPaint.sideColor(war.sides.get(i), i), false, false, null, false, n + " in play  /  " + enc + " encircled", 0));
         }
+        for (var u : g.units()) if (u.inPlay && u.control == WarFront.CONTESTED) play.addAll(u.members);
         for (int side : g.noCapital()) if (side >= 0 && side < war.sides.size())
-            text(out, font, width, war.sides.get(side).name + " holds no Capital, so nothing of theirs counts as encircled.", MUTED);
+            text(out, font, width, war.sides.get(side).name + " holds no Capital: nothing of theirs counts as encircled.", MUTED);
         if (!g.ties().isEmpty()) text(out, font, width, g.ties().size() + (g.ties().size() == 1 ? " tie" : " ties")
-                + " across neutral land need Staff's pick (Short Circuit); those links are left out for now.", WAR_RED);
-        boolean any = false;
-        for (var s : g.scores()) {
-            if (s.score() <= 0 && !s.capitulated()) continue;
-            if (!any) { out.add(gap()); out.add(title("Capitulation", TEXT, -1)); any = true; }
-            String name = s.nation() + (s.hasCapital() ? "" : " (no Capital)");
-            String tail = s.capitulated() ? "CAPITULATED" : points(s.score()) + " / 100" + (s.capitalTaken() ? "  Capital taken" : "");
-            out.add(new L(name, s.capitulated() ? WAR_RED : TEXT, null, WarPaint.sideColor(war.sides.get(s.side()), s.side()), false, false, null, false, tail, 0));
+                + " across neutral land need Staff's pick (Short Circuit).", WAR_RED);
+
+        String playKey = war.id + "/inplay";
+        out.add(fold(playKey, "In Play cities", String.valueOf(play.size()), -1, 0));
+        if (unfolded.contains(playKey)) {
+            if (play.isEmpty()) out.add(new L("none right now", MUTED, null, -1, false, false, null, false, null, 16));
+            play.sort(java.util.Comparator.comparing((TerritoryFile.Locality l) -> String.valueOf(l.country), String.CASE_INSENSITIVE_ORDER).thenComparing(l -> String.valueOf(l.name), String.CASE_INSENSITIVE_ORDER));
+            for (var l : play) {
+                var u = g.unitOf(l);
+                int rgb = u != null && u.control >= 0 && u.control < war.sides.size() ? WarPaint.sideColor(war.sides.get(u.control), u.control) : WarPaint.CONTESTED;
+                int x = l.x, z = l.z;
+                String status = g.statusOf(l);
+                out.add(new L(l.name + (l.country != null && !l.country.isBlank() ? "  (" + l.country + ")" : ""), LINK, () -> goTo(x, z), pulse(rgb), false, false, null, false,
+                        status == null ? "In Play" : status, 16));
+            }
+        }
+
+        List<WarFront.Score> risk = new ArrayList<>();
+        for (var s : g.scores()) if (s.score() > 0 || s.capitulated()) risk.add(s);
+        String capKey = war.id + "/capitulation";
+        out.add(fold(capKey, "Capitulation (7.9)", risk.isEmpty() ? "none at risk" : risk.size() + (risk.size() == 1 ? " nation" : " nations"), -1, 0));
+        if (unfolded.contains(capKey)) for (var s : risk) {
+            String tail = s.capitulated() ? "CAPITULATED" : points(s.score()) + " / 100" + (s.capitalTaken() ? "  capital taken" : "");
+            out.add(new L(s.nation() + (s.hasCapital() ? "" : " (no Capital)"), s.capitulated() ? WAR_RED : TEXT, null,
+                    WarPaint.sideColor(war.sides.get(s.side()), s.side()), false, false, null, false, tail, 16));
         }
         out.add(gap());
     }
@@ -591,6 +619,7 @@ public final class WarMenu {
         if (config.liveWar && hasLiveWar(index) && (tab == 0 || war != null)) DynmapClient.wantMarkers();
         int innerW = PW - 2 * PAD;
         boolean detail = war != null || alliance != null;
+        if (war == null) WarFront.view(null);
         List<L> lines = war != null ? buildWar(font, innerW, war) : alliance != null ? buildAlliance(font, innerW, alliance)
                 : tab == 0 ? buildWars(font, innerW) : tab == 1 ? buildAlliances(font, innerW) : buildTimers(font, innerW);
 
