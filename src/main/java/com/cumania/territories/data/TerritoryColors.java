@@ -66,7 +66,7 @@ public final class TerritoryColors {
 
     // ---- the site's capture limits ----
 
-    private static final int LIMIT_RGB = 0xFFFFFF, LIMIT_ALPHA = 170, LIMIT_WAR_ALPHA = 225;
+    private static final int LIMIT_RGB = 0xFFFFFF, LIMIT_ALPHA = 170, SHADOW_ALPHA = 170;
 
     private static boolean limitsOn() { return com.cumania.territories.TerritoryManager.config().showCaptureLimits; }
 
@@ -82,11 +82,24 @@ public final class TerritoryColors {
     /** Dashes on the outline blocks: white, or in a war's view the colour of whoever holds that city (yellow contested, grey uncontrolled). */
     private static boolean overlayLimits(TerritoryIndex index, short[] limit, int[] out) {
         WarPaint.Paint paint = WarPaint.current();
+        boolean war = paint != null && !paint.zoneRgb().isEmpty();
+        if (war) {
+            // a war's view tints the land in these same colours, so the dash alone would vanish into it: a dark shadow on the blocks beside it
+            // (inside this chunk), and the dash itself a lighter, solid shade of the holder's colour
+            for (int i = 0; i < 256; i++) {
+                if (limit[i] == 0) continue;
+                int x = i & 15, z = i >> 4;
+                if (x > 0 && limit[i - 1] == 0) out[i - 1] = pack(0x000000, SHADOW_ALPHA);
+                if (x < 15 && limit[i + 1] == 0) out[i + 1] = pack(0x000000, SHADOW_ALPHA);
+                if (z > 0 && limit[i - 16] == 0) out[i - 16] = pack(0x000000, SHADOW_ALPHA);
+                if (z < 15 && limit[i + 16] == 0) out[i + 16] = pack(0x000000, SHADOW_ALPHA);
+            }
+        }
         for (int i = 0; i < 256; i++) {
             int z = limit[i];
             if (z == 0) continue;
-            Integer war = paint == null ? null : paint.zoneRgb().get(index.limits().zone(z - 1).key());
-            out[i] = war != null ? pack(war, LIMIT_WAR_ALPHA) : pack(LIMIT_RGB, LIMIT_ALPHA);
+            Integer held = paint == null ? null : paint.zoneRgb().get(index.limits().zone(z - 1).key());
+            out[i] = held != null ? pack(lighten(held, 0.55), 255) : pack(LIMIT_RGB, war ? 200 : LIMIT_ALPHA);
         }
         return true;
     }

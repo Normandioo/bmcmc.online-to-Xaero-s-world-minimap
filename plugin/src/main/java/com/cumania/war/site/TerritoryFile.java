@@ -116,10 +116,15 @@ public final class TerritoryFile {
         public List<int[]> rings;
     }
 
+    private static final java.util.regex.Pattern WAR_COLOUR = java.util.regex.Pattern.compile("(Red|Blue|Green|Contested|Uncontrolled)$");
+
     public static TerritoryFile parse(String json) throws JsonSyntaxException {
         TerritoryFile f = new Gson().fromJson(json, TerritoryFile.class);
         if (f == null || f.countries == null || f.provinces == null) throw new JsonSyntaxException("not a territories file");
         if (f.format != 1) throw new JsonSyntaxException("unsupported territories format " + f.format);
+        // the site's marker types carry the colour of a live war's side ("SmallRed", "FortBlue", "SmallCapitalRed"): the kind is the plain
+        // type, because the capture time and the capital rule go by it. Who holds a city is read from dynmap, not from the file.
+        if (f.localities != null) for (Locality l : f.localities) if (l != null && l.kind != null) l.kind = WAR_COLOUR.matcher(l.kind).replaceFirst("");
         return f;
     }
 }

@@ -169,3 +169,6 @@ O site passou a ter **limites de captura** (`gaia/capture.svg`): a área que um 
 - **Em guerra:** no painel da guerra, o contorno de cada cidade usa a cor do lado que a segura agora (amarelo = contestada, cinza = sem dono), seguindo o que o dynmap diz numa guerra ao vivo. As cidades de fora da guerra continuam brancas.
 - **Compatibilidade:** arquivos sem `zones` funcionam como antes. Coordenadas decimais nas zonas não quebram a leitura.
 - O contorno é de 1 bloco, como as bordas dos países, e os traços são de 8 blocos com 5 de intervalo; com muito zoom out viram pontilhado.
+- **Tipo da cidade com a cor da guerra:** numa guerra ao vivo o site passou a exportar o `kind` das cidades com a cor do lado (`SmallRed`, `FortBlue`, `SmallCapitalRed`). O mod tira esse sufixo ao ler o arquivo, para que ícones, regra de capital e os pontos por cidade da guerra continuem certos.
+- **Contorno em guerra mais visível:** no painel da guerra a terra já é pintada com as cores dos lados, e o traço sumia nela. Agora o traço fica numa cor mais clara, cheia, com uma sombra escura nos blocos ao lado.
+
