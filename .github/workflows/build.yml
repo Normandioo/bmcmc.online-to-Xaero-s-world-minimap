@@ -32,6 +32,15 @@ jobs:
             echo "$project: $url"
             curl -fsSL -o "libs/$project.jar" "$url"
           done
+      - name: PROBE xaero api (temporary)
+        run: |
+          J=libs/xaeros-minimap.jar
+          unzip -Z1 $J | grep -E '^xaero/hud/' | grep -v '\$' | sed 's/\.class//' | head -150 | tr '\n' ' ' > /tmp/classes.txt
+          echo "::notice title=classes::$(cat /tmp/classes.txt)"
+          for c in xaero.hud.module.HudModule xaero.hud.minimap.module.MinimapSession xaero.hud.minimap.BuiltInHudModules xaero.hud.minimap.module.MinimapModule; do
+            out=$(javap -public -cp $J $c 2>&1 | head -60 | tr '\n' '|' | sed 's/%/%25/g')
+            echo "::notice title=$c::$out"
+          done
       - run: chmod +x gradlew
       - run: ./gradlew build --no-daemon
       - uses: actions/upload-artifact@v4
