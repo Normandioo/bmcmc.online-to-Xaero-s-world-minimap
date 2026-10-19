@@ -34,7 +34,7 @@ public final class SettingsMenu {
     public static void toggle() { toggle(0); }
     private static void toggle(int which) {
         if (open && page == which) { open = false; return; }
-        WarMenu.close();
+        WarMenu.hide();   // the war view on the map stays while the options are open
         page = which; open = true;
     }
 

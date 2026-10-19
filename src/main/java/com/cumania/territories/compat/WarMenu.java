@@ -113,6 +113,8 @@ public final class WarMenu {
     public static void toggle() { setOpen(!open); }
     /** Closes the menu (the settings menu takes its place). */
     public static void close() { if (open) setOpen(false); }
+    /** Hides the menu without leaving the war being viewed: its map colours and effects stay, and the menu comes back where it was. */
+    static void hide() { open = false; }
     /** Where the WAR button starts, so the BMC button can sit to its left. */
     static int chipLeft(int screenW) {
         var font = Minecraft.getInstance().font;
