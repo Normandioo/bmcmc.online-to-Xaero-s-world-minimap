@@ -245,6 +245,7 @@ public final class WarFront {
         }
         if (g.hasNetwork) g.connect(war, edges, linkOpen, ownerSide);
         g.score(index, war);
+        Set<String> drawn = new HashSet<>();
         if (g.hasNetwork) for (String[] e : edges) {
             var a = byKey.get(e[0]); var b = byKey.get(e[1]);
             Unit ua = g.unitByCity.get(e[0]), ub = g.unitByCity.get(e[1]);
@@ -252,8 +253,29 @@ public final class WarFront {
             if (ua.control == NEUTRAL || ub.control == NEUTRAL || ua.control == ub.control) continue;
             if (!g.putsInPlay.getOrDefault(ua, Set.of()).contains(ub) && !g.putsInPlay.getOrDefault(ub, Set.of()).contains(ua)) continue;
             g.hot.add(new Hot(a, b, ua.control, ub.control));
+            drawn.add(pair(ua, ub));
+        }
+        // the cities that are In Play across neutral land (Short Circuits), a Bridge or a Strait have no Connection of their own to draw:
+        // the line goes between the closest two cities of the two units, however far apart they are
+        if (g.hasNetwork) for (var e : g.putsInPlay.entrySet()) {
+            Unit u = e.getKey();
+            for (Unit v : e.getValue()) {
+                if (u.control == NEUTRAL || v.control == NEUTRAL || u.control == v.control || !drawn.add(pair(u, v))) continue;
+                TerritoryFile.Locality bestA = null, bestB = null;
+                double best = Double.MAX_VALUE;
+                for (var a : u.members) for (var b : v.members) {
+                    double d = Math.hypot(a.x - b.x, a.z - b.z);
+                    if (d < best) { best = d; bestA = a; bestB = b; }
+                }
+                if (bestA != null) g.hot.add(new Hot(bestA, bestB, u.control, v.control));
+            }
         }
         return g;
+    }
+
+    private static String pair(Unit a, Unit b) {
+        int x = System.identityHashCode(a), y = System.identityHashCode(b);
+        return Math.min(x, y) + "|" + Math.max(x, y);
     }
 
     private void connect(TerritoryFile.WarInfo war, List<String[]> edges, Map<String, Boolean> linkOpen, Map<String, Integer> ownerSide) {
