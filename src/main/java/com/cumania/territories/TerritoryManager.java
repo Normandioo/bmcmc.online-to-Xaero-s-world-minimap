@@ -127,6 +127,7 @@ public final class TerritoryManager {
     private static int paintFingerprint(TerritoryFile file) {
         com.google.gson.Gson gson = new com.google.gson.Gson();
         int h = gson.toJson(file.provinces).hashCode();
+        h = 31 * h + gson.toJson(file.network).hashCode();
         h = 31 * h + gson.toJson(file.zones).hashCode();   // new or moved capture limits redraw the map too
         if (file.countries != null) for (var e : file.countries.entrySet()) h = 31 * h + (e.getKey() + "=" + (e.getValue() == null ? "" : e.getValue().color)).hashCode();
         return h;

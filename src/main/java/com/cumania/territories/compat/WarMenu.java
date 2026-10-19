@@ -5,6 +5,7 @@ import com.cumania.territories.data.DynmapClient;
 import com.cumania.territories.data.LiveControl;
 import com.cumania.territories.data.PanelModel;
 import com.cumania.territories.data.TerritoryFile;
+import com.cumania.territories.data.WarFront;
 import com.cumania.territories.data.WarPaint;
 import com.cumania.territories.data.WarScore;
 import net.minecraft.ChatFormatting;
@@ -284,6 +285,8 @@ public final class WarMenu {
             out.add(gap());
         }
         kv(out, font, width, "Theater", war.theater);
+        WarFront front = WarFront.of(index, war);
+        addFront(out, font, width, war, front);
 
         WarScore.Result result = WarScore.of(index, war);
         if (war.sides != null) for (int i = 0; i < war.sides.size(); i++) {
@@ -329,6 +332,38 @@ public final class WarMenu {
         return out;
     }
 
+    /** The war's front while its rows are built (cityRow shows each city's In Play / Encircled). */
+    private static WarFront FRONT;
+
+    /** Law 7 on top of the points: what is In Play or Encircled, ties Staff must settle, and who has Capitulated (7.9). */
+    private static void addFront(List<L> out, Font font, int width, TerritoryFile.WarInfo war, WarFront g) {
+        FRONT = g;
+        if (!g.hasNetwork() || war.sides == null) return;
+        out.add(title("Front (Law 7)", TEXT, -1));
+        for (int i = 0; i < war.sides.size(); i++) {
+            int play = 0, enc = 0;
+            for (var u : g.units()) {
+                if (u.control != i) continue;
+                if (u.inPlay) play += u.members.size();
+                if (u.encircled) enc += u.members.size();
+            }
+            out.add(new L(war.sides.get(i).name + ":  " + play + " in play,  " + enc + " encircled", TEXT, null, WarPaint.sideColor(war.sides.get(i), i), false));
+        }
+        for (int side : g.noCapital()) if (side >= 0 && side < war.sides.size())
+            text(out, font, width, war.sides.get(side).name + " holds no Capital, so nothing of theirs counts as encircled.", MUTED);
+        if (!g.ties().isEmpty()) text(out, font, width, g.ties().size() + (g.ties().size() == 1 ? " tie" : " ties")
+                + " across neutral land need Staff's pick (Short Circuit); those links are left out for now.", WAR_RED);
+        boolean any = false;
+        for (var s : g.scores()) {
+            if (s.score() <= 0 && !s.capitulated()) continue;
+            if (!any) { out.add(gap()); out.add(title("Capitulation", TEXT, -1)); any = true; }
+            String name = s.nation() + (s.hasCapital() ? "" : " (no Capital)");
+            String tail = s.capitulated() ? "CAPITULATED" : points(s.score()) + " / 100" + (s.capitalTaken() ? "  Capital taken" : "");
+            out.add(new L(name, s.capitulated() ? WAR_RED : TEXT, null, WarPaint.sideColor(war.sides.get(s.side()), s.side()), false, false, null, false, tail, 0));
+        }
+        out.add(gap());
+    }
+
     private static boolean covers(TerritoryFile.Member m, String country) {
         if (country == null) return false;
         if (m.name != null && m.name.equalsIgnoreCase(country)) return true;
@@ -346,6 +381,8 @@ public final class WarMenu {
         int x = l.x, z = l.z;
         String text = l.name + (withCountry && l.country != null && !l.country.isBlank() ? "  (" + l.country + ")" : "");
         String tail = h.value() > 0 ? points(h.value()) : h.disputed() ? h.state() : null;
+        String status = FRONT == null ? null : FRONT.statusOf(l);
+        if (status != null) tail = tail == null ? status : tail + "  " + status;
         return new L(text, LINK, () -> goTo(x, z), swatch, false, false, null, false, tail, indent);
     }
 

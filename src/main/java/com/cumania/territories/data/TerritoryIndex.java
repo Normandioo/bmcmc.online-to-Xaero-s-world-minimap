@@ -29,6 +29,7 @@ public final class TerritoryIndex {
     private final List<TerritoryFile.Locality> localities;
     private final Map<String, Integer> countryByNameId;
     private TerritoryFile.WarData war = new TerritoryFile.WarData();
+    private TerritoryFile.Network network;                            // the site's Connections, or null
     private CaptureLimits limits = CaptureLimits.EMPTY;               // the site's capture limits (empty when it has none)
     private Map<String, TerritoryFile.Player> players = Map.of();   // lower-case site name -> record
     private Map<String, String> siteNameByIgn = Map.of();            // lower-case in-game name -> the site's name for the person
@@ -132,6 +133,7 @@ public final class TerritoryIndex {
         }
         if (file.war != null) built.war = file.war;
         built.limits = CaptureLimits.build(file.zones);
+        built.network = file.network;
         return built;
     }
 
@@ -251,6 +253,8 @@ public final class TerritoryIndex {
 
     /** Country index for a country id such as "Greneshire", or -1. */
     public int countryIndex(String id) { Integer i = countryByNameId.get(id); return i == null ? -1 : i; }
+    /** The site's Connection network (null when the file has none). */
+    public TerritoryFile.Network network() { return network; }
     /** The site's capture limits, as dashed outlines on the block grid. */
     public CaptureLimits limits() { return limits; }
     /** Wars, alliances and timers (empty lists when the file has none). */
