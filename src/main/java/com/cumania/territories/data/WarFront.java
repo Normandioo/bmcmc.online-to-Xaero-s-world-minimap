@@ -61,6 +61,8 @@ public final class WarFront {
     private final List<Integer> noCapital = new ArrayList<>();
     private final List<Score> scores = new ArrayList<>();
     private int sides;
+    private TerritoryFile.WarInfo war;
+    private static volatile WarFront viewing;
     private boolean hasNetwork;
 
     public List<Unit> units() { return units; }
@@ -72,6 +74,19 @@ public final class WarFront {
     public List<Integer> noCapital() { return noCapital; }
     public List<Score> scores() { return scores; }
     public int sides() { return sides; }
+
+    /** The front of the war the menu is showing, for the map to mark its In Play cities; null when none. */
+    public static void view(WarFront g) { viewing = g; }
+
+    /** The colour of the holder of this city when it is In Play in the war being viewed (yellow when contested), else null. */
+    public static Integer playRgb(TerritoryFile.Locality l) {
+        WarFront g = viewing;
+        if (g == null || !g.hasNetwork || g.war == null || g.war.sides == null) return null;
+        Unit u = g.unitOf(l);
+        if (u == null || !u.inPlay) return null;
+        if (u.control >= 0 && u.control < g.war.sides.size()) return WarPaint.sideColor(g.war.sides.get(u.control), u.control);
+        return u.control == CONTESTED ? WarPaint.CONTESTED : null;
+    }
 
     static boolean isCapital(TerritoryFile.Locality l) { return l.kind != null && l.kind.endsWith("Capital"); }
 
@@ -159,6 +174,7 @@ public final class WarFront {
 
     public static WarFront solve(TerritoryIndex index, TerritoryFile.WarInfo war, WarScore.Result score) {
         WarFront g = new WarFront();
+        g.war = war;
         g.sides = war.sides == null ? 0 : war.sides.size();
         TerritoryFile.Network net = index.network();
         g.hasNetwork = net != null && net.edges != null && !net.edges.isEmpty();

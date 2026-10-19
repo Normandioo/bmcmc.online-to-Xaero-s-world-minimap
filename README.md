@@ -161,7 +161,7 @@ O mod passa a ler o dynmap do servidor pelo mesmo endereço que o site usa (`htt
 - **Barra "Who is winning" por pontos:** cada cidade vale pontos pela regra do site (Lei 7.9: 150 pontos por reino, divididos entre os tipos Small/Medium/Large que ele tem e, dentro de cada tipo, igualmente entre as cidades; reino sem assentamentos vale 150 pela capital). A barra mostra a % de pontos que cada lado segura agora (as próprias cidades que não foram tomadas, mais as que tomou). O mod não tem o mapa de regiões do site, então o reino é o país da cidade (ou o nome do membro, como "Eleyetia" para USE e Mesea).
 - **Aviso no chat:** quando uma cidade é capturada, retomada ou fica contestada numa guerra, o mod escreve no chat, por exemplo `[Lombrigan War] Okeham (Greneshire) was captured by Defenders`. Funciona com o mapa fechado: enquanto há uma guerra `live`, o mod lê os marcadores do dynmap em segundo plano a cada 20 s. A primeira leitura só define o ponto de partida (entrar no jogo não anuncia o que já foi tomado), e mais de 5 mudanças de uma vez viram uma linha só. Liga/desliga em **Chat alerts for captures** no menu BMC (`chatAlerts`).
 
-## 1.9.0: limites de captura no mapa e Lei 7
+## 1.9.1 / 1.9.0: limites de captura e Lei 7
 
 **Lei 7 no menu da guerra:** status In Play / Encircled por cidade, bloco "Front (Law 7)", empates para a Staff e Capitulation por nação (`data/WarFront.java`, porte do `WarGraph` do plugin; usa `network`, `shortCircuits`, `supplyCapitals`, `bridges` do `territories.json`).
 

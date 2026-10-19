@@ -138,6 +138,8 @@ public final class TerritoryFile {
 
     public static final class Locality {
         public String name, country, kind, development, lord, ethnicity;
+        /** The marker type as the site exported it, war colour included ("SmallRed"): the icon to draw. Not in the file. */
+        public transient String iconKind;
         public int x, z;
         public List<String> designations;
     }
@@ -157,7 +159,7 @@ public final class TerritoryFile {
         if (f.format != 1) throw new JsonSyntaxException("unsupported territories format " + f.format);
         // the site's marker types now carry the colour of a live war's side ("SmallRed", "FortBlue", "SmallCapitalRed"): the kind is the
         // plain type (icons, capitals and city values go by it), and who holds the city is read from the war itself
-        if (f.localities != null) for (Locality l : f.localities) if (l != null && l.kind != null) l.kind = WAR_COLOUR.matcher(l.kind).replaceFirst("");
+        if (f.localities != null) for (Locality l : f.localities) if (l != null && l.kind != null) { l.iconKind = l.kind; l.kind = WAR_COLOUR.matcher(l.kind).replaceFirst(""); }
         return f;
     }
 }
