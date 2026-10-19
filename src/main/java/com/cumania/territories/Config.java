@@ -55,6 +55,8 @@ public final class Config {
     public boolean showCaptureLimits = false;
     /** In a war's view, the lines of the front (the Connections that put cities In Play) on the map. */
     public boolean showInnerLinks = true;  // dotted grey lines for the connections between a side's own cities
+    /** Size of the online players' markers on the map, in percent (the slider in the BMC menu). */
+    public int playerIconPercent = 200;
     public boolean showFrontLines = true;
     /** Where the site's logo (the BMC button's picture) comes from. */
     public String logoUrl = "https://bmcmc.online/favicon.ico";

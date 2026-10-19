@@ -59,6 +59,10 @@ public final class SettingsMenu {
     public static void render(GuiGraphics g, int mx, int my) {
         mouseX = mx; mouseY = my;
         hits.clear();
+        if (drag != null) {
+            if (Minecraft.getInstance().mouseHandler.isLeftPressed()) drag.run();
+            else { drag = null; TerritoryManager.saveConfig(); }
+        }
         if (repaintAt != 0 && System.currentTimeMillis() >= repaintAt) { repaintAt = 0; TerritoryManager.repaint(); }
         Minecraft mc = Minecraft.getInstance();
         Font font = mc.font;
@@ -86,7 +90,7 @@ public final class SettingsMenu {
         if (!open) { panelH = 0; return; }
 
         // rows
-        int rowCount = page == 1 ? 8 : 9;
+        int rowCount = page == 1 ? 8 : 10;
         panelH = HEADER_H + 7 + rowCount * ROW + 14;
         panelH = Math.min(panelH, screenH - TOP - 6);
         int anchor = page == 1 ? btn2X : btnX;
@@ -122,6 +126,7 @@ public final class SettingsMenu {
             y = toggle(g, font, x0, y, "Info panel on click", c.showPanel, () -> { c.showPanel = !c.showPanel; changed(false); });
             y = toggle(g, font, x0, y, "Province in tooltip", c.showProvince, () -> { c.showProvince = !c.showProvince; changed(false); });
             y = toggle(g, font, x0, y, "Online players", c.showOnlinePlayers, () -> { c.showOnlinePlayers = !c.showOnlinePlayers; changed(false); });
+            y = slider(g, font, x0, y, "Player icon size", c.playerIconPercent, 100, 400, v -> c.playerIconPercent = v);
         }
         g.drawString(font, Fit.text(font, "Saved to config/cumania_territories.json", PW - 2 * PAD), x0 + PAD, y + 3, 0xFF707070, false);
     }
@@ -144,6 +149,27 @@ public final class SettingsMenu {
         String shown = "[ " + value + " ]";
         g.drawString(font, shown, x0 + PW - PAD - font.width(shown), y + 1, hover ? 0xFFFFFFFF : LINK, true);
         hits.add(new Hit(x0 + PAD, y - 2, x0 + PW - PAD, y + ROW - 3, action));
+        return y + ROW;
+    }
+
+    private static Runnable drag;   // set while a slider is being dragged: moves its value to the mouse
+
+    /** "Label   [----O------] 200%": click or drag along the track. */
+    private static int slider(GuiGraphics g, Font font, int x0, int y, String label, int value, int min, int max, java.util.function.IntConsumer set) {
+        g.drawString(font, label, x0 + PAD, y + 1, TEXT, true);
+        String shown = value + "%";
+        int right = x0 + PW - PAD, trackW = 76, tx = right - font.width("400%") - 8 - trackW;
+        double share = (Math.max(min, Math.min(max, value)) - min) / (double) (max - min);
+        int kx = tx + (int) Math.round(share * trackW);
+        g.fill(tx, y + 5, tx + trackW, y + 8, 0xFF444444);
+        g.fill(tx, y + 5, kx, y + 8, ON);
+        g.fill(kx - 2, y, kx + 3, y + 12, 0xFFFFFFFF);
+        g.drawString(font, shown, right - font.width(shown), y + 1, 0xFFFFFFFF, true);
+        Runnable apply = () -> {
+            double s = Math.max(0, Math.min(1, (mouseX - tx) / (double) trackW));
+            set.accept((int) Math.round((min + s * (max - min)) / 5.0) * 5);
+        };
+        hits.add(new Hit(tx - 4, y - 2, tx + trackW + 4, y + ROW - 3, () -> { drag = apply; apply.run(); }));
         return y + ROW;
     }
 
