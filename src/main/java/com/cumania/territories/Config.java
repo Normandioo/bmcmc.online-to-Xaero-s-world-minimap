@@ -47,10 +47,15 @@ public final class Config {
     public boolean showOnlinePlayers = true;
     /** Wars marked "live" on the site take who holds each city from dynmap's markers, as the site does. */
     public boolean liveWar = true;
-    /** Say in the chat when a city is captured (or contested) in a live war, even with the map closed. */
-    public boolean chatAlerts = true;
+    /** A small table by the minimap with each nation's Capitulation (7.9) in the war you are following (the first running one, or the one open in the war menu). */
+    public boolean warHud = false;
+    /** Where it sits: "minimap" = beside Xaero's minimap (on the side facing the middle of the screen), "left" or "right" = a corner of the screen; the offsets are GUI pixels. */
+    public String warHudCorner = "minimap";
+    public int warHudX = 4, warHudY = 0;
     /** Draw the site's capture limits (the land a side must hold to take a city) as dashed outlines on the map. Off until you turn it on. */
     public boolean showCaptureLimits = false;
+    /** In a war's view, the lines of the front (the Connections that put cities In Play) on the map. */
+    public boolean showFrontLines = true;
     /** Where the site's logo (the BMC button's picture) comes from. */
     public String logoUrl = "https://bmcmc.online/favicon.ico";
 

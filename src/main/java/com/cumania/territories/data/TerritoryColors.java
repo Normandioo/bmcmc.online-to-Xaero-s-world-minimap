@@ -33,8 +33,14 @@ public final class TerritoryColors {
     public static boolean compute(TerritoryIndex index, int chunkX, int chunkZ, int fillAlpha, int borderAlpha, int[] out) {
         boolean territory = index.chunkHasTerritory(chunkX, chunkZ);
         short[] limit = limitsOn() ? index.limits().chunk(chunkX, chunkZ) : null;
-        if (!territory && limit == null) return false;
-        if (!territory) { java.util.Arrays.fill(out, 0, 256, 0); return overlayLimits(index, limit, out); }
+        short[] front = frontChunk(chunkX, chunkZ);
+        if (!territory && limit == null && front == null) return false;
+        if (!territory) {
+            java.util.Arrays.fill(out, 0, 256, 0);
+            if (limit != null) overlayLimits(index, limit, out);
+            overlayFront(front, out);
+            return true;
+        }
         WarPaint.Paint paint = WarPaint.current();
         boolean greyOthers = com.cumania.territories.TerritoryManager.config().warGreyOthers;
         int baseX = chunkX << 4, baseZ = chunkZ << 4;
@@ -61,7 +67,32 @@ public final class TerritoryColors {
                 out[(z << 4) | x] = pack(rgb, edge ? borderA : fillA);
             }
         }
-        return limit == null || overlayLimits(index, limit, out);
+        if (limit != null) overlayLimits(index, limit, out);
+        overlayFront(front, out);
+        return true;
+    }
+
+    // ---- the front of a war ----
+
+    private static boolean frontOn() {
+        return com.cumania.territories.TerritoryManager.config().showFrontLines && WarPaint.current() != null && !WarPaint.current().front().isEmpty();
+    }
+
+    private static short[] frontChunk(int cx, int cz) { return frontOn() ? WarPaint.current().front().chunk(cx, cz) : null; }
+
+    /** The lines that put cities In Play: solid, bright, with a dark edge so they stand out over the tinted land. */
+    private static void overlayFront(short[] front, int[] out) {
+        if (front == null) return;
+        FrontLines lines = WarPaint.current().front();
+        for (int i = 0; i < 256; i++) {
+            if (front[i] == 0) continue;
+            int x = i & 15, z = i >> 4;
+            if (x > 0 && front[i - 1] == 0) out[i - 1] = pack(0x000000, SHADOW_ALPHA);
+            if (x < 15 && front[i + 1] == 0) out[i + 1] = pack(0x000000, SHADOW_ALPHA);
+            if (z > 0 && front[i - 16] == 0) out[i - 16] = pack(0x000000, SHADOW_ALPHA);
+            if (z < 15 && front[i + 16] == 0) out[i + 16] = pack(0x000000, SHADOW_ALPHA);
+        }
+        for (int i = 0; i < 256; i++) if (front[i] != 0) out[i] = pack(lighten(lines.rgb(front[i]), 0.25), 255);
     }
 
     // ---- the site's capture limits ----
@@ -72,11 +103,11 @@ public final class TerritoryColors {
 
     /** Whether the chunk has anything for the map to paint: territory, or (with capture limits on) a limit's outline. */
     public static boolean chunkHasAnything(TerritoryIndex index, int cx, int cz) {
-        return index.chunkHasTerritory(cx, cz) || (limitsOn() && index.limits().chunkHas(cx, cz));
+        return index.chunkHasTerritory(cx, cz) || (limitsOn() && index.limits().chunkHas(cx, cz)) || (frontOn() && WarPaint.current().front().chunkHas(cx, cz));
     }
 
     public static boolean regionHasAnything(TerritoryIndex index, int rx, int rz) {
-        return index.regionHasTerritory(rx, rz) || (limitsOn() && index.limits().regionHas(rx, rz));
+        return index.regionHasTerritory(rx, rz) || (limitsOn() && index.limits().regionHas(rx, rz)) || (frontOn() && WarPaint.current().front().regionHas(rx, rz));
     }
 
     /** Dashes on the outline blocks: white, or in a war's view the colour of whoever holds that city (yellow contested, grey uncontrolled). */

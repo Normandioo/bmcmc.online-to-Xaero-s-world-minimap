@@ -121,7 +121,6 @@ public final class TerritoryManager {
         generated = file.generated == null ? "" : file.generated;
         CumaniaTerritories.LOGGER.info("Territories: {} provinces, {} countries ({})", built.provinceCount(), built.countryCount(), generated);
         if (!same) { if (refreshMaps) changed(); else version++; }
-        if (refreshMaps) CaptureAlerts.checkSoon();   // the site's list of captures may have changed too
     }
 
     private static int paintFingerprint(TerritoryFile file) {

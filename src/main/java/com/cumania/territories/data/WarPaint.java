@@ -13,7 +13,11 @@ public final class WarPaint {
 
     /** countryRgb[country] is RGB or -1 (greyed); provinceRgb overrides single provinces. */
     /** zoneRgb: the colour of each capture limit (by "name(country)" in lower case) that a war's view paints by who holds the city. */
-    public record Paint(int[] countryRgb, Map<Integer, Integer> provinceRgb, Map<Integer, int[]> provinceBounds, Map<String, Integer> zoneRgb) {}
+    public record Paint(int[] countryRgb, Map<Integer, Integer> provinceRgb, Map<Integer, int[]> provinceBounds, Map<String, Integer> zoneRgb, FrontLines front) {
+        public Paint(int[] countryRgb, Map<Integer, Integer> provinceRgb, Map<Integer, int[]> provinceBounds, Map<String, Integer> zoneRgb) {
+            this(countryRgb, provinceRgb, provinceBounds, zoneRgb, FrontLines.EMPTY);
+        }
+    }
 
     public static final int NEUTRAL = 0x6E6E6E, CONTESTED = 0xE0C040, UNCONTROLLED = 0x9A9A9A;
     private static final int[] SIDE_COLORS = {0xD83A3A, 0x3A6FD8, 0x3AAE5A, 0xE59A2E, 0x8E5AC8, 0x2AAFAF};
@@ -35,6 +39,8 @@ public final class WarPaint {
         addProvinceBoxes(old, next, boxes);
         addProvinceBoxes(next, old, boxes);
         if (com.cumania.territories.TerritoryManager.config().showCaptureLimits) boxes.addAll(index.limits().boxesOf(changedZones(old, next)));
+        FrontLines fa = old == null ? FrontLines.EMPTY : old.front(), fb = next == null ? FrontLines.EMPTY : next.front();
+        if (!fa.sameAs(fb)) { boxes.addAll(fa.boxes()); boxes.addAll(fb.boxes()); }
         com.cumania.territories.TerritoryManager.repaintRegions(index.regionsTouching(changed, boxes));
     }
 
@@ -107,7 +113,19 @@ public final class WarPaint {
                 if (color != null) zones.put(WarScore.key(h.locality().name, h.locality().country), color);
             }
         }
-        return new Paint(rgb, provinces, bounds, zones);
+        // the front: each Connection that puts a city In Play, in the colours of the two sides
+        List<FrontLines.Seg> segs = new java.util.ArrayList<>();
+        for (WarFront.Hot h : WarFront.of(index, war).hotLines()) {
+            int ca = hotColor(sides, h.controlA()), cb = hotColor(sides, h.controlB());
+            if (ca < 0 || cb < 0) continue;
+            segs.add(new FrontLines.Seg(h.a().x, h.a().z, h.b().x, h.b().z, ca, cb));
+        }
+        return new Paint(rgb, provinces, bounds, zones, FrontLines.build(segs));
+    }
+
+    private static int hotColor(List<TerritoryFile.Side> sides, int control) {
+        if (control == WarFront.CONTESTED) return CONTESTED;
+        return control >= 0 && control < sides.size() ? sideColor(sides.get(control), control) : -1;
     }
 
     public static Paint forAlliance(TerritoryIndex index, TerritoryFile.AllianceInfo alliance) {
