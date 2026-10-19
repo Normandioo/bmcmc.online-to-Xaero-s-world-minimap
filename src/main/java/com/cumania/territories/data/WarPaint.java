@@ -13,12 +13,13 @@ public final class WarPaint {
 
     /** countryRgb[country] is RGB or -1 (greyed); provinceRgb overrides single provinces. */
     /** zoneRgb: the colour of each capture limit (by "name(country)" in lower case) that a war's view paints by who holds the city. */
-    public record Paint(int[] countryRgb, Map<Integer, Integer> provinceRgb, Map<Integer, int[]> provinceBounds, Map<String, Integer> zoneRgb, FrontLines front) {
+    public record Paint(int[] countryRgb, Map<Integer, Integer> provinceRgb, Map<Integer, int[]> provinceBounds, Map<String, Integer> zoneRgb, FrontLines front, FrontLines inner) {
         public Paint(int[] countryRgb, Map<Integer, Integer> provinceRgb, Map<Integer, int[]> provinceBounds, Map<String, Integer> zoneRgb) {
-            this(countryRgb, provinceRgb, provinceBounds, zoneRgb, FrontLines.EMPTY);
+            this(countryRgb, provinceRgb, provinceBounds, zoneRgb, FrontLines.EMPTY, FrontLines.EMPTY);
         }
     }
 
+    public static final int INNER = 0xC8C8C8;
     public static final int NEUTRAL = 0x6E6E6E, CONTESTED = 0xE0C040, UNCONTROLLED = 0x9A9A9A;
     private static final int[] SIDE_COLORS = {0xD83A3A, 0x3A6FD8, 0x3AAE5A, 0xE59A2E, 0x8E5AC8, 0x2AAFAF};
 
@@ -41,6 +42,8 @@ public final class WarPaint {
         if (com.cumania.territories.TerritoryManager.config().showCaptureLimits) boxes.addAll(index.limits().boxesOf(changedZones(old, next)));
         FrontLines fa = old == null ? FrontLines.EMPTY : old.front(), fb = next == null ? FrontLines.EMPTY : next.front();
         if (!fa.sameAs(fb)) { boxes.addAll(fa.boxes()); boxes.addAll(fb.boxes()); }
+        FrontLines ia = old == null ? FrontLines.EMPTY : old.inner(), ib = next == null ? FrontLines.EMPTY : next.inner();
+        if (!ia.sameAs(ib)) { boxes.addAll(ia.boxes()); boxes.addAll(ib.boxes()); }
         com.cumania.territories.TerritoryManager.repaintRegions(index.regionsTouching(changed, boxes));
     }
 
@@ -120,7 +123,10 @@ public final class WarPaint {
             if (ca < 0 || cb < 0) continue;
             segs.add(new FrontLines.Seg(h.a().x, h.a().z, h.b().x, h.b().z, ca, cb));
         }
-        return new Paint(rgb, provinces, bounds, zones, FrontLines.build(segs));
+        // the quiet network inside each side: dotted grey
+        List<FrontLines.Seg> quiet = new java.util.ArrayList<>();
+        for (WarFront.Hot h : WarFront.of(index, war).innerLines()) quiet.add(new FrontLines.Seg(h.a().x, h.a().z, h.b().x, h.b().z, INNER, INNER));
+        return new Paint(rgb, provinces, bounds, zones, FrontLines.build(segs), FrontLines.build(quiet, true));
     }
 
     static int hotColor(List<TerritoryFile.Side> sides, int control) {

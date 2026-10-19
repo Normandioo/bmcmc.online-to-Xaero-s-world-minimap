@@ -34,10 +34,12 @@ public final class TerritoryColors {
         boolean territory = index.chunkHasTerritory(chunkX, chunkZ);
         short[] limit = limitsOn() ? index.limits().chunk(chunkX, chunkZ) : null;
         short[] front = frontChunk(chunkX, chunkZ);
-        if (!territory && limit == null && front == null) return false;
+        short[] inner = innerChunk(chunkX, chunkZ);
+        if (!territory && limit == null && front == null && inner == null) return false;
         if (!territory) {
             java.util.Arrays.fill(out, 0, 256, 0);
             if (limit != null) overlayLimits(index, limit, out);
+            overlayInner(inner, out);
             overlayFront(front, out);
             return true;
         }
@@ -68,6 +70,7 @@ public final class TerritoryColors {
             }
         }
         if (limit != null) overlayLimits(index, limit, out);
+        overlayInner(inner, out);
         overlayFront(front, out);
         return true;
     }
@@ -76,6 +79,18 @@ public final class TerritoryColors {
 
     private static boolean frontOn() {
         return com.cumania.territories.TerritoryManager.config().showFrontLines && WarPaint.current() != null && !WarPaint.current().front().isEmpty();
+    }
+
+    private static boolean innerOn() {
+        return com.cumania.territories.TerritoryManager.config().showInnerLinks && WarPaint.current() != null && !WarPaint.current().inner().isEmpty();
+    }
+
+    private static short[] innerChunk(int cx, int cz) { return innerOn() ? WarPaint.current().inner().chunk(cx, cz) : null; }
+
+    /** The links inside a side: dotted, light grey, drawn under the front. */
+    private static void overlayInner(short[] inner, int[] out) {
+        if (inner == null) return;
+        for (int i = 0; i < 256; i++) if (inner[i] != 0) out[i] = pack(WarPaint.INNER, 215);
     }
 
     private static short[] frontChunk(int cx, int cz) { return frontOn() ? WarPaint.current().front().chunk(cx, cz) : null; }
@@ -103,11 +118,11 @@ public final class TerritoryColors {
 
     /** Whether the chunk has anything for the map to paint: territory, or (with capture limits on) a limit's outline. */
     public static boolean chunkHasAnything(TerritoryIndex index, int cx, int cz) {
-        return index.chunkHasTerritory(cx, cz) || (limitsOn() && index.limits().chunkHas(cx, cz)) || (frontOn() && WarPaint.current().front().chunkHas(cx, cz));
+        return index.chunkHasTerritory(cx, cz) || (limitsOn() && index.limits().chunkHas(cx, cz)) || (frontOn() && WarPaint.current().front().chunkHas(cx, cz)) || (innerOn() && WarPaint.current().inner().chunkHas(cx, cz));
     }
 
     public static boolean regionHasAnything(TerritoryIndex index, int rx, int rz) {
-        return index.regionHasTerritory(rx, rz) || (limitsOn() && index.limits().regionHas(rx, rz)) || (frontOn() && WarPaint.current().front().regionHas(rx, rz));
+        return index.regionHasTerritory(rx, rz) || (limitsOn() && index.limits().regionHas(rx, rz)) || (frontOn() && WarPaint.current().front().regionHas(rx, rz)) || (innerOn() && WarPaint.current().inner().regionHas(rx, rz));
     }
 
     /** Dashes on the outline blocks: white, or in a war's view the colour of whoever holds that city (yellow contested, grey uncontrolled). */
