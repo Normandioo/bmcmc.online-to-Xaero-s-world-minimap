@@ -145,7 +145,7 @@ public final class LocalityRenderer extends ElementRenderer<TerritoryFile.Locali
 
         boolean focus = Focus.is(l);
         if (focus) drawFocus(graphics, r + o);
-        else if (WarPaint.current() != null) {
+        else if (WarPaint.current() != null && TerritoryManager.config().showInPlayRings) {
             Integer play = WarFront.playRgb(l);
             if (play != null) drawInPlay(graphics, r + o, play);
         }

@@ -23,20 +23,27 @@ public final class SettingsMenu {
     private static final int TEXT = 0xFFF4F4F4, MUTED = 0xFFB4B4B4, LINK = 0xFF8FD0FF, ON = 0xFF7CD67C, OFF = 0xFF8A8A8A, ACCENT = 0xFF6AA8E8;
 
     private static boolean open;
-    private static int mouseX, mouseY, btnX, panelX, panelH;
+    private static int page;   // 0 = map settings, 1 = war options
+    private static int mouseX, mouseY, btnX, btn2X, panelX, panelH;
     private record Hit(int x0, int y0, int x1, int y1, Runnable action) {}
     private static final List<Hit> hits = new ArrayList<>();
     private static long repaintAt;   // clicking +/- many times redraws the map once, shortly after the last click
 
     public static boolean isOpen() { return open; }
     public static void close() { open = false; }
-    public static void toggle() { if (!open) WarMenu.close(); open = !open; }
+    public static void toggle() { toggle(0); }
+    private static void toggle(int which) {
+        if (open && page == which) { open = false; return; }
+        WarMenu.close();
+        page = which; open = true;
+    }
 
     /** Left of the WAR button. */
     static int buttonX(int screenW) { return WarMenu.chipLeft(screenW) - BTN - 4; }
 
     public static boolean onClick() {
-        if (mouseX >= btnX && mouseX < btnX + BTN && mouseY >= 6 && mouseY < 6 + 18) { toggle(); return true; }
+        if (mouseX >= btnX && mouseX < btnX + BTN && mouseY >= 6 && mouseY < 6 + 18) { toggle(0); return true; }
+        if (mouseX >= btn2X && mouseX < btn2X + BTN && mouseY >= 6 && mouseY < 6 + 18) { toggle(1); return true; }
         if (!open || panelH <= 0 || mouseX < panelX || mouseX >= panelX + PW || mouseY < TOP || mouseY >= TOP + panelH) return false;
         for (Hit hit : hits) {
             if (mouseX >= hit.x0 && mouseX < hit.x1 && mouseY >= hit.y0 && mouseY < hit.y1) { hit.action.run(); break; }
@@ -69,39 +76,53 @@ public final class SettingsMenu {
         } else {
             g.drawString(font, "BMC", btnX + (BTN - font.width("BMC")) / 2, 11, 0xFFFFFFFF, true);
         }
+        // the second button, left of the first: the war options (a sword)
+        btn2X = btnX - BTN - 4;
+        boolean over2 = mx >= btn2X && mx < btn2X + BTN && my >= 6 && my < 24;
+        boolean on2 = open && page == 1;
+        g.fill(btn2X - 1, 5, btn2X + BTN + 1, 25, on2 ? 0xFFB8D8FF : 0xFFAAAAAA);
+        g.fill(btn2X, 6, btn2X + BTN, 24, on2 ? 0xFF3A5E8A : over2 ? 0xFF4A4A4A : 0xFF2A2A2A);
+        WarArt.rects(WarArt.SWORD, btn2X + (BTN - WarArt.SWORD.w()) / 2, 6 + (18 - WarArt.SWORD.h()) / 2, (x0, y0, x1, y1, col) -> g.fill(x0, y0, x1, y1, col));
         if (!open) { panelH = 0; return; }
 
         // rows
-        int rowCount = 14;
+        int rowCount = page == 1 ? 8 : 9;
         panelH = HEADER_H + 7 + rowCount * ROW + 14;
         panelH = Math.min(panelH, screenH - TOP - 6);
-        int x0 = Math.max(2, Math.min(btnX + BTN - PW, screenW - PW - 2)), y0 = TOP;
+        int anchor = page == 1 ? btn2X : btnX;
+        int x0 = Math.max(2, Math.min(anchor + BTN - PW, screenW - PW - 2)), y0 = TOP;
         panelX = x0;
         g.fill(x0 - 1, y0 - 1, x0 + PW + 1, y0 + panelH + 1, ACCENT);
         g.fill(x0, y0, x0 + PW, y0 + panelH, 0xF2101010);
         g.fill(x0, y0, x0 + PW, y0 + HEADER_H, 0xFF1E3A5C);
         g.fill(x0, y0 + HEADER_H - 1, x0 + PW, y0 + HEADER_H, ACCENT);
-        Component title = Component.literal("Map settings").withStyle(ChatFormatting.BOLD);
+        Component title = Component.literal(page == 1 ? "War options" : "Map settings").withStyle(ChatFormatting.BOLD);
         g.drawString(font, title, x0 + (PW - font.width(title)) / 2, y0 + 8, 0xFFFFFFFF, true);
         g.drawString(font, "x", x0 + PW - 14, y0 + 8, 0xFFDDDDDD, true);
         hits.add(new Hit(x0 + PW - 22, y0, x0 + PW, y0 + HEADER_H, () -> open = false));
 
         int y = y0 + HEADER_H + 7;
-        y = stepper(g, font, x0, y, "Territory colour", c.fillAlpha, v -> c.fillAlpha = v);
-        y = stepper(g, font, x0, y, "Borders", c.borderAlpha, v -> c.borderAlpha = v);
-        y = toggle(g, font, x0, y, "Show territories", c.enabled, () -> { TerritoryManager.toggle(); });
-        y = toggle(g, font, x0, y, "Cities", c.showLocalities, () -> { c.showLocalities = !c.showLocalities; changed(false); });
-        y = toggle(g, font, x0, y, "City names", c.showLocalityNames, () -> { c.showLocalityNames = !c.showLocalityNames; changed(false); });
-        boolean site = !"simple".equalsIgnoreCase(c.markerStyle);
-        y = choice(g, font, x0, y, "City markers", site ? "Site icons" : "Simple", () -> { c.markerStyle = site ? "simple" : "site"; changed(false); });
-        y = toggle(g, font, x0, y, "Info panel on click", c.showPanel, () -> { c.showPanel = !c.showPanel; changed(false); });
-        y = toggle(g, font, x0, y, "Province in tooltip", c.showProvince, () -> { c.showProvince = !c.showProvince; changed(false); });
-        y = toggle(g, font, x0, y, "Online players", c.showOnlinePlayers, () -> { c.showOnlinePlayers = !c.showOnlinePlayers; changed(false); });
-        y = toggle(g, font, x0, y, "Live war control", c.liveWar, () -> { c.liveWar = !c.liveWar; changed(false); WarMenu.liveChanged(); });
-        y = toggle(g, font, x0, y, "Front lines in wars", c.showFrontLines, () -> { c.showFrontLines = !c.showFrontLines; changed(true); });
-        y = toggle(g, font, x0, y, "War slider by the minimap", c.warHud, () -> { c.warHud = !c.warHud; changed(false); });
-        y = toggle(g, font, x0, y, TerritoryManager.index().limits().isEmpty() ? "Capture limits (none on the site)" : "Capture limits", c.showCaptureLimits, () -> { c.showCaptureLimits = !c.showCaptureLimits; changed(true); });
-        y = toggle(g, font, x0, y, "Grey out others in wars", c.warGreyOthers, () -> { c.warGreyOthers = !c.warGreyOthers; changed(true); });
+        if (page == 1) {
+            y = toggle(g, font, x0, y, "Front lines", c.showFrontLines, () -> { c.showFrontLines = !c.showFrontLines; changed(true); });
+            y = toggle(g, font, x0, y, "Clash glow on the front", c.showClash, () -> { c.showClash = !c.showClash; changed(false); });
+            y = toggle(g, font, x0, y, "Swords (both sides inside a city)", c.showSwords, () -> { c.showSwords = !c.showSwords; changed(false); });
+            y = toggle(g, font, x0, y, "Flags on cities just taken", c.showFlags, () -> { c.showFlags = !c.showFlags; changed(false); });
+            y = toggle(g, font, x0, y, "Rings on cities In Play", c.showInPlayRings, () -> { c.showInPlayRings = !c.showInPlayRings; changed(false); });
+            y = toggle(g, font, x0, y, TerritoryManager.index().limits().isEmpty() ? "Capture limits (none on the site)" : "Capture limits", c.showCaptureLimits, () -> { c.showCaptureLimits = !c.showCaptureLimits; changed(true); });
+            y = toggle(g, font, x0, y, "Grey out others in wars", c.warGreyOthers, () -> { c.warGreyOthers = !c.warGreyOthers; changed(true); });
+            y = toggle(g, font, x0, y, "Live war control", c.liveWar, () -> { c.liveWar = !c.liveWar; changed(false); WarMenu.liveChanged(); });
+        } else {
+            y = stepper(g, font, x0, y, "Territory colour", c.fillAlpha, v -> c.fillAlpha = v);
+            y = stepper(g, font, x0, y, "Borders", c.borderAlpha, v -> c.borderAlpha = v);
+            y = toggle(g, font, x0, y, "Show territories", c.enabled, () -> { TerritoryManager.toggle(); });
+            y = toggle(g, font, x0, y, "Cities", c.showLocalities, () -> { c.showLocalities = !c.showLocalities; changed(false); });
+            y = toggle(g, font, x0, y, "City names", c.showLocalityNames, () -> { c.showLocalityNames = !c.showLocalityNames; changed(false); });
+            boolean site = !"simple".equalsIgnoreCase(c.markerStyle);
+            y = choice(g, font, x0, y, "City markers", site ? "Site icons" : "Simple", () -> { c.markerStyle = site ? "simple" : "site"; changed(false); });
+            y = toggle(g, font, x0, y, "Info panel on click", c.showPanel, () -> { c.showPanel = !c.showPanel; changed(false); });
+            y = toggle(g, font, x0, y, "Province in tooltip", c.showProvince, () -> { c.showProvince = !c.showProvince; changed(false); });
+            y = toggle(g, font, x0, y, "Online players", c.showOnlinePlayers, () -> { c.showOnlinePlayers = !c.showOnlinePlayers; changed(false); });
+        }
         g.drawString(font, Fit.text(font, "Saved to config/cumania_territories.json", PW - 2 * PAD), x0 + PAD, y + 3, 0xFF707070, false);
     }
 

@@ -16,8 +16,8 @@ public final class CumaniaTerritories implements ClientModInitializer {
         com.cumania.territories.data.DynmapClient.onMarkersChanged(() -> {
             if (worldMapLoaded) com.cumania.territories.compat.WarMenu.liveChanged();
         });
-        // the war slider next to the minimap (a live war keeps being followed in the background while it is on)
-        com.cumania.territories.WarHud.register();
+        // the war effects (swords, flags, clash glow); a live war keeps being followed in the background while they are on
+        com.cumania.territories.WarEffects.register();
         TerritoryManager.init(FabricLoader.getInstance().getConfigDir());
         com.cumania.territories.command.TerritoryCommand.register();
         if (worldMapLoaded) com.cumania.territories.compat.WorldMapScreenHooks.register();

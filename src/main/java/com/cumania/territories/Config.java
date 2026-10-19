@@ -47,11 +47,11 @@ public final class Config {
     public boolean showOnlinePlayers = true;
     /** Wars marked "live" on the site take who holds each city from dynmap's markers, as the site does. */
     public boolean liveWar = true;
-    /** A small table by the minimap with each nation's Capitulation (7.9) in the war you are following (the first running one, or the one open in the war menu). */
-    public boolean warHud = false;
-    /** Where it sits: "minimap" = beside Xaero's minimap (on the side facing the middle of the screen), "left" or "right" = a corner of the screen; the offsets are GUI pixels. */
-    public String warHudCorner = "minimap";
-    public int warHudX = 4, warHudY = 0;
+    /** The war effects on the map (the second menu, "War options"). */
+    public boolean showClash = true;       // a glow where the two sides' colours meet on the front
+    public boolean showSwords = true;      // a sword on a city with players of both sides inside its territory
+    public boolean showFlags = true;       // a flag in the taker's colour on a city captured a few minutes ago
+    public boolean showInPlayRings = true; // rings pulsing round the cities that are In Play
     /** Draw the site's capture limits (the land a side must hold to take a city) as dashed outlines on the map. Off until you turn it on. */
     public boolean showCaptureLimits = false;
     /** In a war's view, the lines of the front (the Connections that put cities In Play) on the map. */
