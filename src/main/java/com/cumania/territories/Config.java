@@ -48,7 +48,6 @@ public final class Config {
     /** Wars marked "live" on the site take who holds each city from dynmap's markers, as the site does. */
     public boolean liveWar = true;
     /** The war effects on the map (the second menu, "War options"). */
-    public boolean showBorderGlow = true;  // a glow along the whole border where the land of two sides touches
     public boolean showSwords = true;      // a sword on a city with players of both sides inside its territory
     public boolean showFlags = true;       // a flag in the taker's colour on a city captured a few minutes ago
     public boolean showInPlayRings = true; // rings pulsing round the cities that are In Play

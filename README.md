@@ -160,13 +160,13 @@ O mod passa a ler o dynmap do servidor pelo mesmo endereço que o site usa (`htt
 - **Roda do mouse:** com o mouse sobre o menu de guerra, a roda rola o menu em vez de dar zoom no mapa (os botões Up/Down continuam).
 - **Barra "Who is winning" por pontos:** cada cidade vale pontos pela regra do site (Lei 7.9: 150 pontos por reino, divididos entre os tipos Small/Medium/Large que ele tem e, dentro de cada tipo, igualmente entre as cidades; reino sem assentamentos vale 150 pela capital). A barra mostra a % de pontos que cada lado segura agora (as próprias cidades que não foram tomadas, mais as que tomou). O mod não tem o mapa de regiões do site, então o reino é o país da cidade (ou o nome do membro, como "Eleyetia" para USE e Mesea).
 
-## 1.12.1 / 1.12.0: efeitos de guerra e menu "War options"
+## 1.12.2 / 1.12.1 / 1.12.0: efeitos de guerra e menu "War options"
 
 Segundo botão (espada) ao lado do botão BMC no mapa: **War options**, com tudo que é de guerra (as opções de guerra saíram do menu principal).
 
 - **Front lines:** linha grossa, com borda escura, em cada Conexão que põe uma cidade In Play (cada metade na cor do lado que segura a ponta). `showFrontLines`.
 - **Corrigido (1.12.1):** abrir o menu de opções (BMC ou War options) não desliga mais o mapa de guerra: as cores e os efeitos ficam, e o menu da guerra volta de onde estava.
-- **Glow along the border:** em toda a fronteira onde a terra de um lado toca a do outro, uma faixa brilhante nas duas cores (clara, sólida na linha e esmaecendo por 3 blocos), com algumas faíscas amarelas. `showBorderGlow`.
+- ~~Glow along the border~~: removido na 1.12.2 (pesava no mapa).
 - **Swords:** uma espada pixelada na cidade quando há jogadores online dos dois lados dentro do território dela (o limite de captura do site, ou a província). `showSwords`.
 - **Flags:** uma bandeira na cor de quem tomou, por 10 minutos, numa cidade que acabou de mudar de mãos (a primeira leitura só define o ponto de partida). `showFlags`.
 - **Rings on cities In Play:** os anéis pulsando. `showInPlayRings`.
