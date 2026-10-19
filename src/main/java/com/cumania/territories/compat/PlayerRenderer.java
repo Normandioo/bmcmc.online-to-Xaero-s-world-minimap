@@ -66,17 +66,24 @@ public final class PlayerRenderer extends ElementRenderer<DynmapClient.Online, P
     }
 
     /** Rows of coloured cells as rectangles: a run of the same colour along a row is one. */
+    private static double k() { return Math.max(0.5, Math.min(5.0, TerritoryManager.config().playerIconPercent / 100.0)); }
+    private static int px(double v) { return (int) Math.round(v); }
+
     private static void cells(MapElementGraphics g, int[] argb, int w, int h, int x0, int y0) {
+        double k = k();
         for (int row = 0; row < h; row++) {
             int col = 0;
             while (col < w) {
                 int color = argb[row * w + col], end = col + 1;
                 while (end < w && argb[row * w + end] == color) end++;
-                if (color != 0) g.fill(x0 + col, y0 + row, x0 + end, y0 + row + 1, color);
+                if (color != 0) g.fill(x0 + px(col * k), y0 + px(row * k), x0 + px(end * k), y0 + px((row + 1) * k), color);
                 col = end;
             }
         }
     }
+
+    /** The face's size on the map: its 8 pixels, each `k` units wide (the slider in the BMC menu). */
+    private static int head() { return Math.max(HEAD, px(HEAD * k())); }
 
     public static PlayerRenderer create() {
         Context context = new Context();
@@ -110,14 +117,14 @@ public final class PlayerRenderer extends ElementRenderer<DynmapClient.Online, P
         @Override public boolean isHidden(DynmapClient.Online p, Context c) { return false; }
         @Override public double getRenderX(DynmapClient.Online p, Context c, float partialTicks) { return PlayerTracker.x(p); }
         @Override public double getRenderZ(DynmapClient.Online p, Context c, float partialTicks) { return PlayerTracker.z(p); }
-        @Override public int getInteractionBoxLeft(DynmapClient.Online p, Context c, float t) { return -HEAD / 2 - 2; }
-        @Override public int getInteractionBoxRight(DynmapClient.Online p, Context c, float t) { return HEAD / 2 + 3 + FLAG_W + 2; }
-        @Override public int getInteractionBoxTop(DynmapClient.Online p, Context c, float t) { return -HEAD / 2 - 2; }
-        @Override public int getInteractionBoxBottom(DynmapClient.Online p, Context c, float t) { return HEAD / 2 + 2; }
-        @Override public int getRenderBoxLeft(DynmapClient.Online p, Context c, float t) { return -90; }
-        @Override public int getRenderBoxRight(DynmapClient.Online p, Context c, float t) { return 90; }
-        @Override public int getRenderBoxTop(DynmapClient.Online p, Context c, float t) { return -HEAD / 2 - 3; }
-        @Override public int getRenderBoxBottom(DynmapClient.Online p, Context c, float t) { return HEAD / 2 + 18; }
+        @Override public int getInteractionBoxLeft(DynmapClient.Online p, Context c, float t) { return -head() / 2 - 2; }
+        @Override public int getInteractionBoxRight(DynmapClient.Online p, Context c, float t) { return head() / 2 + 3 + px(FLAG_W * k()) + 2; }
+        @Override public int getInteractionBoxTop(DynmapClient.Online p, Context c, float t) { return -head() / 2 - 2; }
+        @Override public int getInteractionBoxBottom(DynmapClient.Online p, Context c, float t) { return head() / 2 + 2; }
+        @Override public int getRenderBoxLeft(DynmapClient.Online p, Context c, float t) { return -90 - head(); }
+        @Override public int getRenderBoxRight(DynmapClient.Online p, Context c, float t) { return 90 + head() + px(FLAG_W * k()); }
+        @Override public int getRenderBoxTop(DynmapClient.Online p, Context c, float t) { return -head() / 2 - 3; }
+        @Override public int getRenderBoxBottom(DynmapClient.Online p, Context c, float t) { return head() / 2 + 18; }
         @Override public int getLeftSideLength(DynmapClient.Online p, Minecraft mc) { return 0; }
         @Override public String getMenuName(DynmapClient.Online p) { return p.siteName(); }
         @Override public String getFilterName(DynmapClient.Online p) { return p.siteName(); }
@@ -139,15 +146,16 @@ public final class PlayerRenderer extends ElementRenderer<DynmapClient.Online, P
 
     @Override public boolean renderElement(DynmapClient.Online p, boolean hovered, double optionalDepth, float optionalScale, double partialX, double partialY, ElementRenderInfo info,
                                            MapElementGraphics graphics, MultiBufferSource.BufferSource buffers, MultiTextureRenderTypeRendererProvider providers) {
-        int half = HEAD / 2;
+        int half = head() / 2;
         graphics.fill(-half - 1, -half - 1, half + 1, half + 1, hovered ? 0xFFFFD400 : 0xFFFFFFFF);   // the ring, as on the site
         int[] face = FaceCache.get(DynmapClient.faceUrl(p.account()));
         if (face != null) cells(graphics, face, FaceCache.SIZE, FaceCache.SIZE, -half, -half);
         else graphics.fill(-half, -half, half, half, 0xFF3A7D44);
         Small flag = flagOf(p);
         if (flag != null) {
-            int fx = half + 3, fy = -flag.h() / 2;
-            graphics.fill(fx - 1, fy - 1, fx + flag.w() + 1, fy + flag.h() + 1, 0xFF101010);
+            int fw = px(flag.w() * k()), fh = px(flag.h() * k());
+            int fx = half + 3, fy = -fh / 2;
+            graphics.fill(fx - 1, fy - 1, fx + fw + 1, fy + fh + 1, 0xFF101010);
             cells(graphics, flag.argb(), flag.w(), flag.h(), fx, fy);
         }
         if (hovered || context.scale >= NAME_FROM) {
