@@ -26,7 +26,7 @@ public final class WarEffects {
     private static void tick() {
         var config = TerritoryManager.config();
         var mc = net.minecraft.client.Minecraft.getInstance();
-        if (!TerritoryManager.active() || mc.player == null || !(config.showClash || config.showSwords || config.showFlags)) { WarMarkers.clear(); return; }
+        if (!TerritoryManager.active() || mc.player == null || !(config.showSwords || config.showFlags)) { WarMarkers.clear(); return; }
         var index = TerritoryManager.index();
         var war = WarMarkers.followed(index);
         if (war == null) { WarMarkers.clear(); return; }
