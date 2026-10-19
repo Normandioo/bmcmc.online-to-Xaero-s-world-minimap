@@ -17,6 +17,7 @@ import xaero.map.gui.GuiMap;
  */
 @Mixin(value = GuiMap.class, remap = false)
 public abstract class GuiMapClickMixin implements CameraTarget {
+
     /** The same field Xaero fills for "hop to coordinates": the map then glides there on its own. */
     @Shadow private int[] cameraDestination;
     /** The zoom Xaero is gliding towards (static, shared by every map screen). */
@@ -30,11 +31,13 @@ public abstract class GuiMapClickMixin implements CameraTarget {
     private void cumania$mapClicked(int button, int x, int y, CallbackInfo ci) {
         if (button != 0) return;
         Object element = viewedOnMousePress == null ? null : viewedOnMousePress.getElement();
-        CountryPanel.onMapClick(mouseBlockPosX, mouseBlockPosZ, element instanceof TerritoryFile.Locality locality ? locality : null);
+        if (element instanceof com.cumania.territories.data.DynmapClient.Online online) CountryPanel.openPlayer(online.siteName());
+        else CountryPanel.onMapClick(mouseBlockPosX, mouseBlockPosZ, element instanceof TerritoryFile.Locality locality ? locality : null);
     }
 
     @Override
     public void cumania$goTo(int blockX, int blockZ, double minZoom) {
+        com.cumania.territories.compat.Focus.set(blockX, blockZ);
         cameraDestination = new int[]{blockX, blockZ};
         if (minZoom > 0 && destScale < minZoom) destScale = minZoom;
     }

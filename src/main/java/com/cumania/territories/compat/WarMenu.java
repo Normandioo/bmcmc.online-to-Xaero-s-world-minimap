@@ -1,9 +1,13 @@
 package com.cumania.territories.compat;
 
 import com.cumania.territories.TerritoryManager;
+import com.cumania.territories.data.DynmapClient;
+import com.cumania.territories.data.LiveControl;
 import com.cumania.territories.data.PanelModel;
 import com.cumania.territories.data.TerritoryFile;
+import com.cumania.territories.data.WarFront;
 import com.cumania.territories.data.WarPaint;
+import com.cumania.territories.data.WarScore;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -15,10 +19,12 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * The war menu on Xaero's World Map (a WAR button at the top right, or /territories war): the site's wars with their sides,
@@ -37,78 +43,85 @@ public final class WarMenu {
     private static int tab, scroll;
     private static String warId, allianceId;
 
-    /** One row of the body. heading = a section title (taller, with a bar), spacer = empty space. swatch >= 0 draws a colour square first. */
+    /**
+     * One row of the body. heading = a section title (taller, with a bar), spacer = empty space, swatch >= 0 draws a colour square first,
+     * fold = a header that opens and closes the rows below it, tail = small text at the right edge, indent = pixels in from the left.
+     */
     private record Bar(int[] weights, int[] colors) {}
 
-    private record L(String text, int rgb, Runnable action, int swatch, boolean heading, boolean spacer, Bar bar) {
-        L(String text, int rgb, Runnable action, int swatch, boolean heading) { this(text, rgb, action, swatch, heading, false, null); }
-        L(String text, int rgb, Runnable action, int swatch, boolean heading, boolean spacer) { this(text, rgb, action, swatch, heading, spacer, null); }
+    private record L(String text, int rgb, Runnable action, int swatch, boolean heading, boolean spacer, Bar bar, boolean fold, String tail, int indent) {
+        L(String text, int rgb, Runnable action, int swatch, boolean heading) { this(text, rgb, action, swatch, heading, false, null, false, null, 0); }
+        L(String text, int rgb, Runnable action, int swatch, boolean heading, boolean spacer) { this(text, rgb, action, swatch, heading, spacer, null, false, null, 0); }
+        L(String text, int rgb, Runnable action, int swatch, boolean heading, boolean spacer, Bar bar) { this(text, rgb, action, swatch, heading, spacer, bar, false, null, 0); }
         int height() { return bar != null ? 13 : spacer ? 5 : heading ? 17 : LINE; }
     }
     private static L gap() { return new L("", 0, null, -1, false, true); }
 
+    /** Which lists are open (by key). Closed unless opened, so a long war stays short until you ask for a list. */
+    private static final Set<String> unfolded = new HashSet<>();
+
+    private static L fold(String key, String label, String tail, int swatch, int indent) {
+        boolean on = unfolded.contains(key);
+        return new L((on ? "[-]  " : "[+]  ") + label, TEXT, () -> { if (!unfolded.remove(key)) unfolded.add(key); }, swatch, false, false, null, true, tail, indent);
+    }
+
+    private static String count(int n) { return n + (n == 1 ? " city" : " cities"); }
+
+    private static String points(double v) {
+        double r = Math.round(v * 10) / 10.0;
+        return r == Math.rint(r) ? String.valueOf((long) r) : String.valueOf(r);
+    }
+
     /**
-     * Who is ahead in a war, from what each side has taken off the other (captured localities held by one side that belong to a
-     * country of another). Returns {captures per side} plus the verdict text through the lists.
+     * The "who is winning" slider: split by the points each side holds (its own cities not taken, plus what it has taken), then who leads,
+     * each side's share and its points. See WarScore for what a city is worth.
      */
-    private record Standing(int[] taken, int[] colors, String[] names, int leader, boolean even) {}
-
-    private static Standing standing(TerritoryFile.WarInfo war) {
-        int n = war.sides == null ? 0 : war.sides.size();
-        int[] taken = new int[n], colors = new int[n];
-        String[] names = new String[n];
-        for (int i = 0; i < n; i++) { colors[i] = WarPaint.sideColor(war.sides.get(i), i); names[i] = war.sides.get(i).name; }
-        if (war.captured != null) for (var c : war.captured) {
-            if (!"held".equals(c.state) || c.holderKey == null) continue;
-            int captor = sideOfCountry(war, c.holderKey), owner = sideOfCountry(war, c.country);
-            if (captor >= 0 && owner >= 0 && captor != owner) taken[captor]++;
-        }
-        int leader = 0, best = -1; boolean even = false;
-        for (int i = 0; i < n; i++) { if (taken[i] > best) { best = taken[i]; leader = i; } }
-        for (int i = 0; i < n; i++) if (i != leader && taken[i] == best) even = true;   // another side ties for the lead
-        if (best <= 0) even = true;
-        return new Standing(taken, colors, names, leader, even);
-    }
-
-    private static int sideOfCountry(TerritoryFile.WarInfo war, String country) {
-        if (country == null || war.sides == null) return -1;
-        for (int i = 0; i < war.sides.size(); i++) {
-            var members = war.sides.get(i).members;
-            if (members == null) continue;
-            for (var m : members) if (m.countries != null) for (String c : m.countries) if (c.equalsIgnoreCase(country)) return i;
-        }
-        return -1;
-    }
-
-    /** The "who is winning" slider: a bar split by captures, then a line saying who leads. */
     private static void addStanding(List<L> out, Font font, int width, TerritoryFile.WarInfo war, boolean full) {
-        Standing st = standing(war);
-        if (st.taken.length < 2) return;
-        int total = 0;
-        for (int t : st.taken) total += t;
-        int[] weights = new int[st.taken.length];
-        for (int i = 0; i < weights.length; i++) weights[i] = total == 0 ? 1 : st.taken[i];
-        out.add(new L("", 0, null, -1, false, false, new Bar(weights, st.colors)));
-        StringBuilder counts = new StringBuilder();
-        for (int i = 0; i < st.taken.length; i++) counts.append(i > 0 ? "   " : "").append(st.names[i]).append(' ').append(st.taken[i]);
+        WarScore.Result r = WarScore.of(TerritoryManager.index(), war);
+        int n = r.sides();
+        if (n < 2) return;
+        int[] colors = new int[n], weights = new int[n], percent = new int[n];
+        String[] names = new String[n];
+        boolean any = r.total() > 0;
+        for (int i = 0; i < n; i++) {
+            colors[i] = WarPaint.sideColor(war.sides.get(i), i);
+            names[i] = war.sides.get(i).name;
+            weights[i] = any ? (int) Math.round(r.points()[i] * 100) : 1;
+            percent[i] = (int) Math.round(r.share(i) * 100);
+        }
+        if (n == 2) percent[1] = 100 - percent[0];
+        out.add(new L("", 0, null, -1, false, false, new Bar(weights, colors)));
+        StringBuilder shares = new StringBuilder();
+        for (int i = 0; i < n; i++) shares.append(i > 0 ? "   " : "").append(names[i]).append(' ').append(percent[i]).append('%');
         if (full) {
-            String verdict = total == 0 ? "No captures yet: nobody is ahead" : st.even ? "Even: both sides have taken the same" : st.names[st.leader] + " are ahead";
-            out.add(new L(verdict, total == 0 || st.even ? MUTED : (0xFF000000 | st.colors[st.leader]), null, -1, false));
-            for (String part : PanelModel.wrap("Captures: " + counts, width, font::width)) out.add(new L(part, MUTED, null, -1, false));
-            out.add(new L("Counted from the cities each side has taken off the other.", MUTED, null, -1, false));
+            String verdict = !any ? "No city values on record" : r.even() ? "Even: no side is ahead" : names[r.leader()] + " are ahead";
+            out.add(new L(verdict, !any || r.even() ? MUTED : (0xFF000000 | colors[r.leader()]), null, -1, false));
+            for (int i = 0; i < n; i++) {
+                String line = names[i] + "  " + percent[i] + "%" + (any ? "   (" + points(r.points()[i]) + " pts)" : "");
+                out.add(new L(line, TEXT, null, colors[i], false));
+            }
             out.add(gap());
         } else {
-            for (String part : PanelModel.wrap(total == 0 ? "No captures yet" : counts.toString(), width - 12, font::width)) out.add(new L("   " + part, MUTED, null, -1, false));
+            for (String part : PanelModel.wrap(any ? shares.toString() : "No city values on record", width - 12, font::width)) out.add(new L("   " + part, MUTED, null, -1, false));
         }
     }
     private record Hit(int x0, int y0, int x1, int y1, Runnable action) {}
 
     private static final List<Hit> hits = new ArrayList<>();
-    private static int mouseX, mouseY, panelX, panelH, chipX, chipW = 52;
+    private static int mouseX, mouseY, panelX, panelH, chipX, chipW = 52, maxScroll;
 
     public static void toggle() { setOpen(!open); }
+    /** Closes the menu (the settings menu takes its place). */
+    public static void close() { if (open) setOpen(false); }
+    /** Where the WAR button starts, so the BMC button can sit to its left. */
+    static int chipLeft(int screenW) {
+        var font = Minecraft.getInstance().font;
+        int running = activeCount();
+        return screenW - (font.width(running > 0 ? "WAR  " + running : "WAR") + 18) - 6;
+    }
 
     private static void setOpen(boolean value) {
+        if (value) SettingsMenu.close();
         open = value;
         if (!open) leaveDetail();
     }
@@ -124,24 +137,32 @@ public final class WarMenu {
         return true;
     }
 
+    /** The mouse wheel over the menu scrolls it (and not the map). True when it was ours. */
+    public static boolean onScroll(double mx, double my, double amount) {
+        if (!open || panelH <= 0 || !TerritoryManager.active() || !TerritoryManager.config().showWarMenu) return false;
+        if (mx < panelX || mx >= panelX + PW || my < TOP || my >= TOP + panelH) return false;
+        if (amount != 0) scroll = Math.max(0, Math.min(maxScroll, scroll - (int) Math.signum(amount) * 3));
+        return true;
+    }
+
     // ---------------------------------------------------------------- state changes
 
     private static void leaveDetail() {
         boolean was = warId != null || allianceId != null;
         warId = null; allianceId = null; scroll = 0;
-        if (was || WarPaint.current() != null) { WarPaint.set(null); TerritoryManager.repaint(); }
+        if (was || WarPaint.current() != null) WarPaint.apply(TerritoryManager.index(), null);
     }
 
     private static void openWar(String id) {
         warId = id; allianceId = null; scroll = 0;
         TerritoryFile.WarInfo war = findWar(id);
-        if (war != null) { WarPaint.set(WarPaint.forWar(TerritoryManager.index(), war)); TerritoryManager.repaint(); }
+        if (war != null) WarPaint.apply(TerritoryManager.index(), WarPaint.forWar(TerritoryManager.index(), war));
     }
 
     private static void openAlliance(String id) {
         allianceId = id; warId = null; scroll = 0;
         TerritoryFile.AllianceInfo a = findAlliance(id);
-        if (a != null) { WarPaint.set(WarPaint.forAlliance(TerritoryManager.index(), a)); TerritoryManager.repaint(); }
+        if (a != null) WarPaint.apply(TerritoryManager.index(), WarPaint.forAlliance(TerritoryManager.index(), a));
     }
 
     private static void selectTab(int t) { if (t != tab || warId != null || allianceId != null) { leaveDetail(); tab = t; scroll = 0; } }
@@ -168,7 +189,7 @@ public final class WarMenu {
         try { return iso == null || iso.isBlank() ? null : Instant.parse(iso); } catch (Exception e) { return null; }
     }
 
-    private static boolean active(TerritoryFile.WarInfo war) {
+    static boolean active(TerritoryFile.WarInfo war) {
         Instant ended = at(war.ended);
         return ended == null || ended.isAfter(Instant.now());
     }
@@ -200,6 +221,21 @@ public final class WarMenu {
 
     private static L title(String text, int rgb, int swatch) { return new L(text, rgb, null, swatch, true); }
 
+    private static boolean hasLiveWar(com.cumania.territories.data.TerritoryIndex index) {
+        var wars = index.war().wars;
+        if (wars != null) for (var w : wars) if (w.live && w.ended == null) return true;
+        return false;
+    }
+
+    /** dynmap's markers changed: if the open war is live, paint what it says now (only the regions that differ are redrawn). */
+    public static void liveChanged() {
+        Minecraft.getInstance().execute(() -> {
+            if (!open || warId == null) return;
+            var war = findWar(warId);
+            if (war != null && war.live) WarPaint.apply(TerritoryManager.index(), WarPaint.forWar(TerritoryManager.index(), war));
+        });
+    }
+
     private static int activeCount() {
         var wars = TerritoryManager.index().war().wars;
         int n = 0;
@@ -221,8 +257,7 @@ public final class WarMenu {
                 String id = w.id;
                 out.add(new L(w.name, wantActive ? TEXT : MUTED, () -> openWar(id), wantActive ? 0xE05050 : 0x808080, false));
                 Instant started = at(w.started);
-                String sub = (w.type == null ? "" : w.type) + (started != null ? "  -  started " + relative(started) : "");
-                for (String part : PanelModel.wrap(sub, width - 12, font::width)) out.add(new L("   " + part, MUTED, null, -1, false));
+                if (started != null) out.add(new L("   started " + relative(started), MUTED, null, -1, false));
                 if (wantActive) addStanding(out, font, width, w, false);
                 out.add(gap());
             }
@@ -233,61 +268,207 @@ public final class WarMenu {
 
     private static List<L> buildWar(Font font, int width, TerritoryFile.WarInfo war) {
         List<L> out = new ArrayList<>();
+        var index = TerritoryManager.index();
         Instant started = at(war.started), ended = at(war.ended);
         boolean over = ended != null && !ended.isAfter(Instant.now());
         out.add(new L(over ? "ENDED" : "ONGOING", over ? MUTED : WAR_RED, null, over ? 0x808080 : 0xE05050, false));
         out.add(gap());
         out.add(title("Who is winning", TEXT, -1));
         addStanding(out, font, width, war, true);
-        kv(out, font, width, "Type", war.type);
-        if (war.rule != null) { text(out, font, width, war.rule, MUTED); out.add(gap()); }
-        if (started != null) kv(out, font, width, "Started", date(started) + "  (" + relative(started) + ")");
         if (over) {
             kv(out, font, width, "Ended", date(ended) + "  (" + relative(ended) + ")");
             Instant truce = ended.plus(Duration.ofDays(3));
             if (truce.isAfter(Instant.now())) kv(out, font, width, "Truce until", date(truce) + "  (" + relative(truce) + ")");
-        } else if (ended != null) kv(out, font, width, "Ends", date(ended) + "  (" + relative(ended) + ")");
-        if (war.noAllies) { text(out, font, width, "No allies: defenders may not call in allies (7.1.6)", TEXT); out.add(gap()); }
+        } else {
+            if (started != null) out.add(new L("Started " + relative(started), MUTED, null, -1, false));
+            if (ended != null) out.add(new L("Ends " + relative(ended), MUTED, null, -1, false));
+            out.add(gap());
+        }
         kv(out, font, width, "Theater", war.theater);
+        WarFront front = WarFront.of(index, war);
+        addFront(out, font, width, war, front);
+
+        WarScore.Result result = WarScore.of(index, war);
         if (war.sides != null) for (int i = 0; i < war.sides.size(); i++) {
             var side = war.sides.get(i);
             int count = side.members == null ? 0 : side.members.size();
             out.add(title(side.name + "  " + count, TEXT, WarPaint.sideColor(side, i)));
-            if (side.members != null) for (var m : side.members) {
-                text(out, font, width - 10, "  " + m.name + (m.note != null && !m.note.isBlank() ? "  (" + m.note + ")" : ""), TEXT);
+            if (side.members != null) for (int j = 0; j < side.members.size(); j++) {
+                var m = side.members.get(j);
+                List<WarScore.Holding> mine = new ArrayList<>();
+                for (var h : result.holdings()) if (h.holder() == i && h.owner() == i && covers(m, h.locality().country)) mine.add(h);
+                mine.sort(BY_VALUE);
+                String key = war.id + "/" + i + "/" + j;
+                out.add(fold(key, m.name + (m.note != null && !m.note.isBlank() ? "  (" + m.note + ")" : ""), count(mine.size()), -1, 0));
+                if (unfolded.contains(key)) {
+                    if (mine.isEmpty()) out.add(new L("none held", MUTED, null, -1, false, false, null, false, null, 16));
+                    boolean multi = m.countries != null && m.countries.size() > 1;
+                    for (var h : mine) out.add(cityRow(h, multi, 16, -1));
+                }
+            }
+            List<WarScore.Holding> taken = new ArrayList<>();
+            for (var h : result.holdings()) if (h.holder() == i && h.owner() != i) taken.add(h);
+            taken.sort(BY_VALUE);
+            String takenKey = war.id + "/" + i + "/taken";
+            out.add(fold(takenKey, "Captured from the enemy", count(taken.size()), -1, 0));
+            if (unfolded.contains(takenKey)) {
+                if (taken.isEmpty()) out.add(new L("nothing captured yet", MUTED, null, -1, false, false, null, false, null, 16));
+                for (var h : taken) out.add(cityRow(h, true, 16, -1));
             }
             out.add(gap());
         }
-        if (war.captured != null && !war.captured.isEmpty()) {
-            out.add(title("Captured  " + war.captured.size() + "   (click to go)", TEXT, -1));
-            for (var c : war.captured) {
-                String holder = "contested".equals(c.state) ? "contested" : "uncontrolled".equals(c.state) ? "uncontrolled" : "held by " + c.holder;
-                int swatch = "contested".equals(c.state) ? WarPaint.CONTESTED : "uncontrolled".equals(c.state) ? WarPaint.UNCONTROLLED : -1;
-                int x = c.x, z = c.z;
-                out.add(new L(c.name, LINK, () -> goTo(x, z), swatch, false));
-                out.add(new L("   " + holder, MUTED, null, -1, false));
-            }
+
+        List<WarScore.Holding> disputed = new ArrayList<>();
+        for (var h : result.holdings()) if (h.disputed()) disputed.add(h);
+        if (!disputed.isEmpty()) {
+            disputed.sort(BY_VALUE);
+            String key = war.id + "/disputed";
+            out.add(fold(key, "Contested or uncontrolled", count(disputed.size()), -1, 0));
+            if (unfolded.contains(key)) for (var h : disputed) out.add(cityRow(h, true, 16, "contested".equals(h.state()) ? WarPaint.CONTESTED : WarPaint.UNCONTROLLED));
             out.add(gap());
         }
+        if (LiveControl.isLive(war)) out.add(new L("Live from dynmap", OK, null, -1, false));
         if (war.notes != null && !war.notes.isBlank()) { out.add(title("Notes", TEXT, -1)); text(out, font, width, war.notes, MUTED); }
         return out;
     }
 
+    /** The war's front while its rows are built (cityRow shows each city's In Play / Encircled). */
+    private static WarFront FRONT;
+
+    /** Law 7 on top of the points: what is In Play or Encircled, ties Staff must settle, and who has Capitulated (7.9). */
+    private static void addFront(List<L> out, Font font, int width, TerritoryFile.WarInfo war, WarFront g) {
+        FRONT = g;
+        if (!g.hasNetwork() || war.sides == null) return;
+        out.add(title("Front (Law 7)", TEXT, -1));
+        for (int i = 0; i < war.sides.size(); i++) {
+            int play = 0, enc = 0;
+            for (var u : g.units()) {
+                if (u.control != i) continue;
+                if (u.inPlay) play += u.members.size();
+                if (u.encircled) enc += u.members.size();
+            }
+            out.add(new L(war.sides.get(i).name + ":  " + play + " in play,  " + enc + " encircled", TEXT, null, WarPaint.sideColor(war.sides.get(i), i), false));
+        }
+        for (int side : g.noCapital()) if (side >= 0 && side < war.sides.size())
+            text(out, font, width, war.sides.get(side).name + " holds no Capital, so nothing of theirs counts as encircled.", MUTED);
+        if (!g.ties().isEmpty()) text(out, font, width, g.ties().size() + (g.ties().size() == 1 ? " tie" : " ties")
+                + " across neutral land need Staff's pick (Short Circuit); those links are left out for now.", WAR_RED);
+        boolean any = false;
+        for (var s : g.scores()) {
+            if (s.score() <= 0 && !s.capitulated()) continue;
+            if (!any) { out.add(gap()); out.add(title("Capitulation", TEXT, -1)); any = true; }
+            String name = s.nation() + (s.hasCapital() ? "" : " (no Capital)");
+            String tail = s.capitulated() ? "CAPITULATED" : points(s.score()) + " / 100" + (s.capitalTaken() ? "  Capital taken" : "");
+            out.add(new L(name, s.capitulated() ? WAR_RED : TEXT, null, WarPaint.sideColor(war.sides.get(s.side()), s.side()), false, false, null, false, tail, 0));
+        }
+        out.add(gap());
+    }
+
+    private static boolean covers(TerritoryFile.Member m, String country) {
+        if (country == null) return false;
+        if (m.name != null && m.name.equalsIgnoreCase(country)) return true;
+        if (m.countries == null) return false;
+        for (String c : m.countries) if (c.equalsIgnoreCase(country)) return true;
+        return false;
+    }
+
+    private static final java.util.Comparator<WarScore.Holding> BY_VALUE = java.util.Comparator
+            .comparingDouble((WarScore.Holding h) -> -h.value()).thenComparing(h -> String.valueOf(h.locality().name), String.CASE_INSENSITIVE_ORDER);
+
+    /** A city in a list: its name (click to go there), the country when it matters, and what it is worth at the right. */
+    private static L cityRow(WarScore.Holding h, boolean withCountry, int indent, int swatch) {
+        var l = h.locality();
+        int x = l.x, z = l.z;
+        String text = l.name + (withCountry && l.country != null && !l.country.isBlank() ? "  (" + l.country + ")" : "");
+        String tail = h.value() > 0 ? points(h.value()) : h.disputed() ? h.state() : null;
+        String status = FRONT == null ? null : FRONT.statusOf(l);
+        if (status != null) tail = tail == null ? status : tail + "  " + status;
+        return new L(text, LINK, () -> goTo(x, z), swatch, false, false, null, false, tail, indent);
+    }
+
+    /** The country picked in the Alliances tab (a country id), "*" for every alliance, or null for none yet. */
+    private static String allianceFilter;
+    private static boolean filterOpen;
+
+    private static boolean includes(TerritoryFile.AllianceInfo a, String countryId) {
+        if (a.members == null) return false;
+        for (var m : a.members) if (m.countries != null && m.countries.contains(countryId)) return true;
+        return false;
+    }
+
     private static List<L> buildAlliances(Font font, int width) {
         List<L> out = new ArrayList<>();
-        var list = TerritoryManager.index().war().alliances;
+        var index = TerritoryManager.index();
+        var list = index.war().alliances;
         if (list == null || list.isEmpty()) { text(out, font, width, "No alliances on record on the site.", MUTED); return out; }
-        out.add(title("Alliances  " + list.size(), TEXT, -1));
-        for (var a : list) {
-            String id = a.id;
-            Integer color = WarPaint.parse(a.color);
-            out.add(new L(a.name, TEXT, () -> openAlliance(id), color != null ? color : 0x3A6FD8, false));
-            for (String part : PanelModel.wrap((a.members == null ? 0 : a.members.size()) + " members" + (a.formed != null ? "  -  formed " + a.formed : ""), width - 12, font::width))
-                out.add(new L("   " + part, MUTED, null, -1, false));
-            out.add(gap());
+
+        // countries that are in at least one alliance, by name
+        java.util.TreeMap<String, String> countries = new java.util.TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+        for (var a : list) if (a.members != null) for (var m : a.members) if (m.countries != null)
+            for (String id : m.countries) { int ci = index.countryIndex(id); if (ci >= 0) countries.put(index.countryName(ci), id); }
+
+        out.add(title("Filter by country", TEXT, -1));
+        String current = allianceFilter == null ? "Pick a country..." : "*".equals(allianceFilter) ? "All alliances"
+                : index.countryIndex(allianceFilter) >= 0 ? index.countryName(index.countryIndex(allianceFilter)) : allianceFilter;
+        int currentCi = allianceFilter == null || "*".equals(allianceFilter) ? -1 : index.countryIndex(allianceFilter);
+        out.add(new L((filterOpen ? "[-]  " : "[+]  ") + current, LINK, () -> filterOpen = !filterOpen, currentCi >= 0 ? index.countryRgb(currentCi) : -1, false));
+        if (filterOpen) {
+            out.add(new L("   All alliances", TEXT, () -> { allianceFilter = "*"; filterOpen = false; scroll = 0; }, -1, false));
+            for (var e : countries.entrySet()) {
+                String id = e.getValue();
+                int ci = index.countryIndex(id);
+                out.add(new L("   " + e.getKey(), TEXT, () -> { allianceFilter = id; filterOpen = false; scroll = 0; }, ci >= 0 ? index.countryRgb(ci) : -1, false));
+            }
+            return out;
         }
+        out.add(gap());
+
+        if (allianceFilter == null) {
+            text(out, font, width, "Pick a country to see its allies and the alliances it belongs to.", MUTED);
+            return out;
+        }
+        if ("*".equals(allianceFilter)) {
+            out.add(title("Alliances  " + list.size(), TEXT, -1));
+            for (var a : list) addAllianceEntry(out, font, width, a, null);
+            out.add(new L("Click an alliance to paint its members.", MUTED, null, -1, false));
+            return out;
+        }
+
+        String name = currentCi >= 0 ? index.countryName(currentCi) : allianceFilter;
+        List<TerritoryFile.AllianceInfo> its = new ArrayList<>();
+        for (var a : list) if (includes(a, allianceFilter)) its.add(a);
+        if (its.isEmpty()) { text(out, font, width, name + " is not in any alliance on record.", MUTED); return out; }
+
+        // every other country that shares an alliance with it
+        java.util.TreeSet<String> allies = new java.util.TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+        for (var a : its) for (var m : a.members) if (m.countries != null) for (String id : m.countries) {
+            if (id.equals(allianceFilter)) continue;
+            int ci = index.countryIndex(id);
+            allies.add(ci >= 0 ? index.countryName(ci) : id);
+        }
+        out.add(title("Allies of " + name + "  " + allies.size(), TEXT, currentCi >= 0 ? index.countryRgb(currentCi) : -1));
+        text(out, font, width, String.join(", ", allies), TEXT);
+        out.add(gap());
+        out.add(title("Alliances  " + its.size(), TEXT, -1));
+        for (var a : its) addAllianceEntry(out, font, width, a, allianceFilter);
         out.add(new L("Click an alliance to paint its members.", MUTED, null, -1, false));
         return out;
+    }
+
+    /** One alliance in the list: its name (click to open), then who is in it. */
+    private static void addAllianceEntry(List<L> out, Font font, int width, TerritoryFile.AllianceInfo a, String exceptCountry) {
+        String id = a.id;
+        Integer color = WarPaint.parse(a.color);
+        out.add(new L(a.name, TEXT, () -> openAlliance(id), color != null ? color : 0x3A6FD8, false));
+        String info;
+        if (exceptCountry == null) info = (a.members == null ? 0 : a.members.size()) + " members" + (a.formed != null ? "  -  formed " + a.formed : "");
+        else {
+            List<String> names = new ArrayList<>();
+            if (a.members != null) for (var m : a.members) if (m.countries == null || !m.countries.contains(exceptCountry) || m.countries.size() > 1) names.add(m.name);
+            info = "With: " + String.join(", ", names) + (a.formed != null ? "  -  formed " + a.formed : "");
+        }
+        for (String part : PanelModel.wrap(info, width - 12, font::width)) out.add(new L("   " + part, MUTED, null, -1, false));
+        out.add(gap());
     }
 
     private static List<L> buildAlliance(Font font, int width, TerritoryFile.AllianceInfo a) {
@@ -405,9 +586,9 @@ public final class WarMenu {
         TerritoryFile.AllianceInfo alliance = allianceId == null ? null : findAlliance(allianceId);
         if ((warId != null && war == null) || (allianceId != null && alliance == null)) { leaveDetail(); war = null; alliance = null; }
         if ((war != null || alliance != null) && WarPaint.current() == null) {
-            WarPaint.set(war != null ? WarPaint.forWar(index, war) : WarPaint.forAlliance(index, alliance));
-            TerritoryManager.repaint();
+            WarPaint.apply(index, war != null ? WarPaint.forWar(index, war) : WarPaint.forAlliance(index, alliance));
         }
+        if (config.liveWar && hasLiveWar(index) && (tab == 0 || war != null)) DynmapClient.wantMarkers();
         int innerW = PW - 2 * PAD;
         boolean detail = war != null || alliance != null;
         List<L> lines = war != null ? buildWar(font, innerW, war) : alliance != null ? buildAlliance(font, innerW, alliance)
@@ -420,12 +601,19 @@ public final class WarMenu {
         for (L l : lines) total += l.height();
         boolean overflow = total > budget;
         if (overflow) budget -= footerH;
-        scroll = Math.max(0, Math.min(scroll, Math.max(0, lines.size() - 1)));
+        // the furthest it can scroll: the first row from which everything after it still fits
+        maxScroll = 0;
+        if (overflow) {
+            int acc = 0, idx = lines.size();
+            while (idx > 0 && acc + lines.get(idx - 1).height() <= budget) { acc += lines.get(idx - 1).height(); idx--; }
+            maxScroll = Math.max(0, idx);
+        }
+        scroll = Math.max(0, Math.min(scroll, maxScroll));
         int first = scroll, used = 0, last = first;
         while (last < lines.size() && used + lines.get(last).height() <= budget) used += lines.get(last++).height();
         if (last == first && first < lines.size()) last = first + 1;
         panelH = HEADER_H + tabsH + used + 12 + (overflow ? footerH : 0);
-        int x0 = screenW - PW - 6, y0 = TOP;
+        int x0 = Math.max(2, screenW - PW - 6), y0 = TOP;
         panelX = x0;
 
         int accent = 0xFFE05050;
@@ -433,9 +621,7 @@ public final class WarMenu {
         g.fill(x0, y0, x0 + PW, y0 + panelH, 0xF2101010);
         g.fill(x0, y0, x0 + PW, y0 + HEADER_H, 0xFF4A1818);
         g.fill(x0, y0 + HEADER_H - 1, x0 + PW, y0 + HEADER_H, accent);
-        String title = war != null ? war.name : alliance != null ? alliance.name : "War menu";
-        while (font.width(title) > PW - 56 && title.length() > 4) title = title.substring(0, title.length() - 2);
-        if (!title.equals(war != null ? war.name : alliance != null ? alliance.name : "War menu")) title += "...";
+        String title = Fit.bold(font, war != null ? war.name : alliance != null ? alliance.name : "War menu", PW - 62);
         Component titleText = Component.literal(title).withStyle(ChatFormatting.BOLD);
         g.drawString(font, titleText, x0 + (PW - font.width(titleText)) / 2, y0 + 8, 0xFFFFFFFF, true);
         g.drawString(font, "x", x0 + PW - 14, y0 + 8, 0xFFDDDDDD, true);
@@ -480,18 +666,26 @@ public final class WarMenu {
                 y += 3;
                 g.fill(x0 + PAD - 3, y - 1, x0 + PAD, y + 10, 0xFF000000 | (line.swatch >= 0 ? line.swatch : 0xE05050));
                 x += 3;
-                g.drawString(font, Component.literal(line.text).withStyle(ChatFormatting.BOLD), x, y + 1, line.rgb, true);
+                g.drawString(font, Component.literal(Fit.bold(font, line.text, x0 + PW - PAD - x)).withStyle(ChatFormatting.BOLD), x, y + 1, line.rgb, true);
                 y += line.height() - 3;
                 continue;
             }
+            x += line.indent();
             if (line.swatch >= 0) { g.fill(x, y + 1, x + 8, y + 9, 0xFF000000 | line.swatch); x += 12; }
-            int w = font.width(line.text);
-            boolean hover = line.action != null && mx >= x && mx < x + w && my >= y - 1 && my < y + LINE - 1;
-            int color = line.action != null ? (hover ? 0xFFFFFFFF : LINK) : line.rgb;
-            g.drawString(font, line.text, x, y + 1, color, line.action != null || color == TEXT);
+            int tailW = line.tail() == null ? 0 : font.width(line.tail()) + 8;
+            String shown = Fit.text(font, line.text, x0 + PW - PAD - x - tailW);
+            int w = font.width(shown);
+            boolean hover = line.action != null && (line.fold() ? mx >= x0 + PAD && mx < x0 + PW - PAD : mx >= x && mx < x + w) && my >= y - 1 && my < y + LINE - 1;
+            int color = line.action != null ? (hover ? 0xFFFFFFFF : line.fold() ? TEXT : LINK) : line.rgb;
+            g.drawString(font, shown, x, y + 1, color, line.action != null || color == TEXT);
+            if (line.tail() != null) g.drawString(font, line.tail(), x0 + PW - PAD - font.width(line.tail()), y + 1, line.action != null && line.fold() ? MUTED : 0xFFD8C080, false);
             if (line.action != null) {
-                g.fill(x, y + 10, x + w, y + 11, hover ? 0xFFFFFFFF : 0x808FD0FF);
-                hits.add(new Hit(x - 2, y - 1, x + w + 2, y + LINE, line.action));
+                if (line.fold()) {
+                    hits.add(new Hit(x0 + PAD - 2, y - 1, x0 + PW - PAD + 2, y + LINE, line.action));
+                } else {
+                    g.fill(x, y + 10, x + w, y + 11, hover ? 0xFFFFFFFF : 0x808FD0FF);
+                    hits.add(new Hit(x - 2, y - 1, x + w + 2, y + LINE, line.action));
+                }
             }
             y += LINE;
         }
@@ -505,7 +699,7 @@ public final class WarMenu {
             g.drawString(font, down, dx, fy + 1, canDown ? LINK : 0xFF555555, false);
             int stepUp = Math.max(1, last - first - 2);
             hits.add(new Hit(x0 + PAD - 2, fy - 2, x0 + PAD + font.width(up) + 2, fy + LINE + 2, () -> scroll = Math.max(0, scroll - stepUp)));
-            int nextFirst = Math.min(lines.size() - 1, Math.max(first + 1, last - 1));
+            int nextFirst = Math.min(maxScroll, Math.max(first + 1, last - 1));
             hits.add(new Hit(dx - 2, fy - 2, dx + font.width(down) + 2, fy + LINE + 2, () -> scroll = nextFirst));
             String where = (first + 1) + "-" + last + " / " + lines.size();
             g.drawString(font, where, x0 + PW - PAD - font.width(where), fy + 1, MUTED, false);

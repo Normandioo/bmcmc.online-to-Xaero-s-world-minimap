@@ -1,0 +1,105 @@
+# Builds the Xaero's mod and the server plugin on every push, and keeps the jars to download
+# (repository > Actions > the run > Artifacts). Nothing needs to be installed on anyone's computer.
+name: Build
+
+on:
+  push:
+    branches: [claude/dev, main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  mod:
+    name: Fabric mod
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      # The mod is compiled against Xaero's World Map and Minimap (they are not part of the repository and are not put in the jar):
+      # the newest Fabric build of each for the Minecraft version in gradle.properties, from Modrinth.
+      - name: Fetch Xaero's jars (compile only)
+        run: |
+          mc=$(grep '^minecraft_version=' gradle.properties | cut -d= -f2)
+          mkdir -p libs
+          for project in xaeros-world-map xaeros-minimap; do
+            url=$(curl -fsS "https://api.modrinth.com/v2/project/$project/version?loaders=%5B%22fabric%22%5D&game_versions=%5B%22$mc%22%5D" \
+              | python3 -c "import json,sys; v=json.load(sys.stdin); print(v[0]['files'][0]['url'])")
+            echo "$project: $url"
+            curl -fsSL -o "libs/$project.jar" "$url"
+          done
+      - run: chmod +x gradlew
+      - run: ./gradlew build --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cumania-territories
+          path: |
+            build/libs/*.jar
+            !build/libs/*-sources.jar
+            !build/libs/*-dev.jar
+
+  plugin:
+    name: Server plugin (BmcWar)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: plugin
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      - run: chmod +x gradlew
+      - name: Build
+        shell: bash
+        run: |
+          set +e
+          ./gradlew build --no-daemon > build.log 2>&1
+          code=$?
+          if [ $code -ne 0 ]; then
+            # show the cause in the run's annotations too
+            echo "::error title=Gradle failed::$(grep -E 'error|Could not|What went wrong|wrong|FAILED' -A3 build.log | head -25 | sed ':a;N;$!ba;s/\n/%0A/g')"
+          fi
+          cat build.log
+          exit $code
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BmcWar
+          path: plugin/build/libs/*.jar
+
+  # Publishes a Release with the two jars. It runs on a pushed tag "vX.Y.Z", and also on a push to main when mod_version
+  # (gradle.properties) has no release yet: it then creates the tag itself. Notes: .github/release-notes/vX.Y.Z.md when it exists.
+  release:
+    name: Release
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    needs: [mod, plugin]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+      - name: Create the release (if this version has none)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -e
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            tag="$GITHUB_REF_NAME"
+          else
+            tag="v$(grep '^mod_version=' gradle.properties | cut -d= -f2)"
+          fi
+          if gh release view "$tag" >/dev/null 2>&1; then echo "$tag already has a release"; exit 0; fi
+          find dist -name '*.jar' | sort
+          notes=".github/release-notes/$tag.md"
+          if [ -f "$notes" ]; then notes_args=(--notes-file "$notes"); else notes_args=(--generate-notes); fi
+          gh release create "$tag" --title "$tag" --target "$GITHUB_SHA" "${notes_args[@]}" $(find dist -name '*.jar' | tr '\n' ' ')

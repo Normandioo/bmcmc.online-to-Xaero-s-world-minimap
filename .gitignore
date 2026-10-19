@@ -1,7 +1,9 @@
-.gradle/
-build/
-run/
-.idea/
-*.iml
 # Xaero's jars are the author's, don't commit them
+*.iml
+.gradle/
+.idea/
+build/
 libs/*.jar
+plugin/.gradle/
+plugin/build/
+run/

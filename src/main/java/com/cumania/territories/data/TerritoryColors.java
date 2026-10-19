@@ -31,8 +31,12 @@ public final class TerritoryColors {
      * @return false when the chunk has no territory at all
      */
     public static boolean compute(TerritoryIndex index, int chunkX, int chunkZ, int fillAlpha, int borderAlpha, int[] out) {
-        if (!index.chunkHasTerritory(chunkX, chunkZ)) return false;
+        boolean territory = index.chunkHasTerritory(chunkX, chunkZ);
+        short[] limit = limitsOn() ? index.limits().chunk(chunkX, chunkZ) : null;
+        if (!territory && limit == null) return false;
+        if (!territory) { java.util.Arrays.fill(out, 0, 256, 0); return overlayLimits(index, limit, out); }
         WarPaint.Paint paint = WarPaint.current();
+        boolean greyOthers = com.cumania.territories.TerritoryManager.config().warGreyOthers;
         int baseX = chunkX << 4, baseZ = chunkZ << 4;
         for (int z = 0; z < 16; z++) {
             for (int x = 0; x < 16; x++) {
@@ -42,7 +46,7 @@ public final class TerritoryColors {
                 int rgb = index.countryRgb(country), fillA = fillAlpha, borderA = borderAlpha;
                 if (paint != null) {
                     int painted = country < paint.countryRgb().length ? paint.countryRgb()[country] : -1;
-                    if (painted >= 0) rgb = painted; else { rgb = WarPaint.NEUTRAL; fillA = fillAlpha / 2; borderA = borderAlpha / 2; }
+                    if (painted >= 0) rgb = painted; else if (greyOthers) { rgb = WarPaint.NEUTRAL; fillA = fillAlpha / 2; borderA = borderAlpha / 2; }
                     if (!paint.provinceRgb().isEmpty()) {
                         for (Map.Entry<Integer, int[]> e : paint.provinceBounds().entrySet()) {   // few: only the captured provinces
                             int[] b = e.getValue();
@@ -56,6 +60,46 @@ public final class TerritoryColors {
                         || index.countryAtBlock(bx, bz + 1) != country || index.countryAtBlock(bx - 1, bz) != country;
                 out[(z << 4) | x] = pack(rgb, edge ? borderA : fillA);
             }
+        }
+        return limit == null || overlayLimits(index, limit, out);
+    }
+
+    // ---- the site's capture limits ----
+
+    private static final int LIMIT_RGB = 0xFFFFFF, LIMIT_ALPHA = 170, SHADOW_ALPHA = 170;
+
+    private static boolean limitsOn() { return com.cumania.territories.TerritoryManager.config().showCaptureLimits; }
+
+    /** Whether the chunk has anything for the map to paint: territory, or (with capture limits on) a limit's outline. */
+    public static boolean chunkHasAnything(TerritoryIndex index, int cx, int cz) {
+        return index.chunkHasTerritory(cx, cz) || (limitsOn() && index.limits().chunkHas(cx, cz));
+    }
+
+    public static boolean regionHasAnything(TerritoryIndex index, int rx, int rz) {
+        return index.regionHasTerritory(rx, rz) || (limitsOn() && index.limits().regionHas(rx, rz));
+    }
+
+    /** Dashes on the outline blocks: white, or in a war's view the colour of whoever holds that city (yellow contested, grey uncontrolled). */
+    private static boolean overlayLimits(TerritoryIndex index, short[] limit, int[] out) {
+        WarPaint.Paint paint = WarPaint.current();
+        boolean war = paint != null && !paint.zoneRgb().isEmpty();
+        if (war) {
+            // a war's view tints the land in these same colours, so the dash alone would vanish into it: a dark shadow on the blocks beside it
+            // (inside this chunk), and the dash itself a lighter, solid shade of the holder's colour
+            for (int i = 0; i < 256; i++) {
+                if (limit[i] == 0) continue;
+                int x = i & 15, z = i >> 4;
+                if (x > 0 && limit[i - 1] == 0) out[i - 1] = pack(0x000000, SHADOW_ALPHA);
+                if (x < 15 && limit[i + 1] == 0) out[i + 1] = pack(0x000000, SHADOW_ALPHA);
+                if (z > 0 && limit[i - 16] == 0) out[i - 16] = pack(0x000000, SHADOW_ALPHA);
+                if (z < 15 && limit[i + 16] == 0) out[i + 16] = pack(0x000000, SHADOW_ALPHA);
+            }
+        }
+        for (int i = 0; i < 256; i++) {
+            int z = limit[i];
+            if (z == 0) continue;
+            Integer held = paint == null ? null : paint.zoneRgb().get(index.limits().zone(z - 1).key());
+            out[i] = held != null ? pack(lighten(held, 0.55), 255) : pack(LIMIT_RGB, war ? 200 : LIMIT_ALPHA);
         }
         return true;
     }

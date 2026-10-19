@@ -29,9 +29,13 @@ public final class TerritoryIndex {
     private final List<TerritoryFile.Locality> localities;
     private final Map<String, Integer> countryByNameId;
     private TerritoryFile.WarData war = new TerritoryFile.WarData();
+    private TerritoryFile.Network network;                            // the site's Connections, or null
+    private CaptureLimits limits = CaptureLimits.EMPTY;               // the site's capture limits (empty when it has none)
     private Map<String, TerritoryFile.Player> players = Map.of();   // lower-case site name -> record
+    private Map<String, String> siteNameByIgn = Map.of();            // lower-case in-game name -> the site's name for the person
     private final boolean[] chunkHas;                     // chunks with at least one claimed block
     private final boolean[] regionHas;                    // 32x32 chunk regions
+    private final long[] regionCountries;                // 4 longs per region: which countries have blocks in it
     private final int minCx, minCz, chunksW, chunksH, minRx, minRz, regionsW, regionsH;
 
     private TerritoryIndex(int minX, int minZ, int width, int height, byte[] grid, List<TerritoryFile.Province> provinces,
@@ -53,7 +57,7 @@ public final class TerritoryIndex {
         }
         if (width == 0) {
             minCx = minCz = chunksW = chunksH = minRx = minRz = regionsW = regionsH = 0;
-            chunkHas = new boolean[0]; regionHas = new boolean[0];
+            chunkHas = new boolean[0]; regionHas = new boolean[0]; regionCountries = new long[0];
             return;
         }
         minCx = minX >> 4; minCz = minZ >> 4;
@@ -72,6 +76,15 @@ public final class TerritoryIndex {
         regionHas = new boolean[regionsW * regionsH];
         for (int cz = 0; cz < chunksH; cz++) for (int cx = 0; cx < chunksW; cx++) {
             if (chunkHas[cz * chunksW + cx]) regionHas[(((minCz + cz) >> 5) - minRz) * regionsW + (((minCx + cx) >> 5) - minRx)] = true;
+        }
+        regionCountries = new long[regionsW * regionsH * 4];
+        for (int z = 0; z < height; z++) {
+            int rRow = (((minZ + z) >> 9) - minRz) * regionsW;
+            for (int x = 0; x < width; x++) {
+                int v = (grid[z * width + x] & 255) - 1;
+                if (v < 0) continue;
+                regionCountries[(rRow + (((minX + x) >> 9) - minRx)) * 4 + (v >> 6)] |= 1L << (v & 63);
+            }
         }
     }
 
@@ -114,8 +127,13 @@ public final class TerritoryIndex {
             Map<String, TerritoryFile.Player> byName = new HashMap<>();
             file.players.forEach((k, v) -> { if (k != null && v != null) byName.put(k.toLowerCase(), v); });
             built.players = byName;
+            Map<String, String> ign = new HashMap<>();
+            file.players.forEach((k, v) -> { if (k != null && v != null && v.ign != null && !v.ign.isBlank()) ign.put(v.ign.trim().toLowerCase(), k); });
+            built.siteNameByIgn = ign;
         }
         if (file.war != null) built.war = file.war;
+        built.limits = CaptureLimits.build(file.zones);
+        built.network = file.network;
         return built;
     }
 
@@ -205,6 +223,28 @@ public final class TerritoryIndex {
         return x >= 0 && z >= 0 && x < chunksW && z < chunksH && chunkHas[z * chunksW + x];
     }
 
+    /**
+     * The regions (as {regionX, regionZ}) a recolouring touches: those holding blocks of a changed country, plus
+     * those overlapping the given block boxes (single provinces). Lets the map redraw only what changed.
+     */
+    public List<int[]> regionsTouching(boolean[] changedCountries, List<int[]> blockBoxes) {
+        List<int[]> out = new ArrayList<>();
+        for (int rz = 0; rz < regionsH; rz++) for (int rx = 0; rx < regionsW; rx++) {
+            int base = (rz * regionsW + rx) * 4;
+            boolean hit = false;
+            for (int c = 0; c < changedCountries.length && !hit; c++) {
+                if (changedCountries[c] && c < 256 && (regionCountries[base + (c >> 6)] & (1L << (c & 63))) != 0) hit = true;
+            }
+            int wx = (minRx + rx) << 9, wz = (minRz + rz) << 9;
+            for (int i = 0; i < blockBoxes.size() && !hit; i++) {
+                int[] b = blockBoxes.get(i);
+                if (b[2] >= wx && b[0] < wx + 512 && b[3] >= wz && b[1] < wz + 512) hit = true;
+            }
+            if (hit) out.add(new int[]{minRx + rx, minRz + rz});
+        }
+        return out;
+    }
+
     /** Whether any chunk in the 32x32 region (region coordinates) is claimed. */
     public boolean regionHasTerritory(int rx, int rz) {
         int x = rx - minRx, z = rz - minRz;
@@ -213,13 +253,42 @@ public final class TerritoryIndex {
 
     /** Country index for a country id such as "Greneshire", or -1. */
     public int countryIndex(String id) { Integer i = countryByNameId.get(id); return i == null ? -1 : i; }
+    /** The site's Connection network (null when the file has none). */
+    public TerritoryFile.Network network() { return network; }
+    /** The site's capture limits, as dashed outlines on the block grid. */
+    public CaptureLimits limits() { return limits; }
     /** Wars, alliances and timers (empty lists when the file has none). */
     public TerritoryFile.WarData war() { return war; }
 
     /** The site's record of this person, or null (the file may not carry players at all). */
     public TerritoryFile.Player player(String name) { return name == null ? null : players.get(name.toLowerCase()); }
 
+    /** The site's name for the person who plays under this in-game name (or the name itself when the site doesn't know it). */
+    public String siteNameForIgn(String ign) {
+        if (ign == null) return "";
+        String site = siteNameByIgn.get(ign.trim().toLowerCase());
+        return site != null ? site : ign;
+    }
+
     public TerritoryFile.Country countryData(int country) { return countryData.get(country); }
+
+    private volatile Map<String, Integer> nationByPlayer;
+
+    /** The country this player is in (by the countries' population lists), or -1. */
+    public int nationOfPlayer(String siteName) {
+        if (siteName == null) return -1;
+        Map<String, Integer> map = nationByPlayer;
+        if (map == null) {
+            map = new HashMap<>();
+            for (int c = 0; c < countryData.size(); c++) {
+                var population = countryData.get(c).population;
+                if (population != null) for (String n : population) if (n != null) map.putIfAbsent(n.trim().toLowerCase(), c);
+            }
+            nationByPlayer = map;
+        }
+        Integer c = map.get(siteName.trim().toLowerCase());
+        return c == null ? -1 : c;
+    }
     public List<TerritoryFile.Locality> localities() { return localities; }
 
     /** The localities this player is lord of (a shared lordship lists its lords separated by commas). */
@@ -237,6 +306,8 @@ public final class TerritoryIndex {
     public String countryId(int country) { return countryIds[country]; }
     public String provinceLabel(int province) { return provinceLabels[province]; }
     public int countryOfProvince(int province) { return countryOfProvince[province]; }
+    /** {minX, minZ, width, height} of the block grid. */
+    public int[] blockBounds() { return new int[]{minX, minZ, width, height}; }
     public boolean isEmpty() { return width == 0; }
     public int provinceCount() { return provinceLabels.length; }
     public int countryCount() { return countryIds.length; }

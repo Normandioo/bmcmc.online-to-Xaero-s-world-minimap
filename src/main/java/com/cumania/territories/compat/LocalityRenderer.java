@@ -1,6 +1,7 @@
 package com.cumania.territories.compat;
 
 import com.cumania.territories.TerritoryManager;
+import com.cumania.territories.data.IconCache;
 import com.cumania.territories.data.TerritoryFile;
 import com.cumania.territories.data.TerritoryIndex;
 import net.minecraft.client.Minecraft;
@@ -71,7 +72,7 @@ public final class LocalityRenderer extends ElementRenderer<TerritoryFile.Locali
             List<TerritoryFile.Locality> list = new ArrayList<>();
             if (TerritoryManager.active() && config.showLocalities && context.dimension == TerritoryManager.dimension()) {
                 double scale = effectiveScale(context);
-                for (TerritoryFile.Locality l : TerritoryManager.index().localities()) if (scale >= ICON_FROM[rank(l)]) list.add(l);
+                for (TerritoryFile.Locality l : TerritoryManager.index().localities()) if (scale >= ICON_FROM[rank(l)] || Focus.is(l)) list.add(l);
             }
             visible = list; next = 0;
         }
@@ -94,8 +95,8 @@ public final class LocalityRenderer extends ElementRenderer<TerritoryFile.Locali
         @Override public int getInteractionBoxBottom(TerritoryFile.Locality l, Context c, float p) { return box(l); }
         @Override public int getRenderBoxLeft(TerritoryFile.Locality l, Context c, float p) { return -90; }    // wide enough for the name
         @Override public int getRenderBoxRight(TerritoryFile.Locality l, Context c, float p) { return 90; }
-        @Override public int getRenderBoxTop(TerritoryFile.Locality l, Context c, float p) { return -box(l); }
-        @Override public int getRenderBoxBottom(TerritoryFile.Locality l, Context c, float p) { return box(l) + 14; }
+        @Override public int getRenderBoxTop(TerritoryFile.Locality l, Context c, float p) { return -Math.max(box(l), 40); }
+        @Override public int getRenderBoxBottom(TerritoryFile.Locality l, Context c, float p) { return Math.max(box(l) + 14, 40); }
         @Override public int getLeftSideLength(TerritoryFile.Locality l, Minecraft mc) { return 0; }
         @Override public String getMenuName(TerritoryFile.Locality l) { return l.name; }
         @Override public String getFilterName(TerritoryFile.Locality l) { return l.name; }
@@ -121,21 +122,56 @@ public final class LocalityRenderer extends ElementRenderer<TerritoryFile.Locali
                                            MapElementGraphics graphics, MultiBufferSource.BufferSource buffers, MultiTextureRenderTypeRendererProvider providers) {
         TerritoryIndex index = TerritoryManager.index();
         int rank = rank(l);
-        int r = RADIUS[rank] + (hovered ? 1 : 0);
-        int country = index.countryIndex(l.country);
-        int rgb = country < 0 ? 0xCCCCCC : index.countryRgb(country);
-        int outline = isCapital(l) ? 0xFFFFFFFF : 0xFF101010;
-        int o = isCapital(l) ? 2 : 1;
-        graphics.fill(-r - o, -r - o, r + o, r + o, outline);
-        graphics.fill(-r, -r, r, r, 0xFF000000 | rgb);
-        if (rank >= 3) graphics.fill(-1, -1, 1, 1, 0xFFFFFFFF);   // towns and up get a pip
+        var config = TerritoryManager.config();
+        int r, o = isCapital(l) ? 2 : 1;
+        IconCache.Icon icon = "simple".equalsIgnoreCase(config.markerStyle) ? null : IconCache.get(config.markerIconUrl, l.kind);
+        if (icon != null) {
+            // the site's own marker, centred on the city
+            int half = icon.size() / 2;
+            for (IconCache.Rect rect : icon.rects()) graphics.fill(rect.x() - half, rect.y() - half, rect.x() + rect.w() - half, rect.y() + rect.h() - half, rect.argb());
+            if (hovered) frame(graphics, half + 1, 1, 0xFFFFD23C);
+            r = half - o;
+        } else {
+            r = RADIUS[rank] + (hovered ? 1 : 0);
+            int country = index.countryIndex(l.country);
+            int rgb = country < 0 ? 0xCCCCCC : index.countryRgb(country);
+            int outline = isCapital(l) ? 0xFFFFFFFF : 0xFF101010;
+            graphics.fill(-r - o, -r - o, r + o, r + o, outline);
+            graphics.fill(-r, -r, r, r, 0xFF000000 | rgb);
+            if (rank >= 3) graphics.fill(-1, -1, 1, 1, 0xFFFFFFFF);   // towns and up get a pip
+        }
 
-        if (TerritoryManager.config().showLocalityNames && (hovered || effectiveScale(context) >= NAME_FROM[rank])) {
+        boolean focus = Focus.is(l);
+        if (focus) drawFocus(graphics, r + o);
+
+        if (TerritoryManager.config().showLocalityNames && (hovered || focus || effectiveScale(context) >= NAME_FROM[rank])) {
             var font = Minecraft.getInstance().font;
             int w = font.width(l.name);
             graphics.drawString(font, l.name, -w / 2, r + o + 2, 0xFFFFFFFF, true);
         }
         return true;
+    }
+
+    /** A steady gold frame plus two rings that grow outwards and fade, repeating while the focus lasts. */
+    private static void drawFocus(MapElementGraphics g, int base) {
+        float strength = Focus.strength();
+        frame(g, base + 3, 2, argb((int) (255 * strength), 0xFFD23C));
+        for (int ring = 0; ring < 2; ring++) {
+            float t = (Focus.pulse() + ring * 0.5f) % 1f;
+            int radius = base + 4 + (int) (t * 22);
+            int alpha = (int) (200 * (1f - t) * strength);
+            if (alpha > 4) frame(g, radius, 2, argb(alpha, 0xFFFFFF));
+        }
+    }
+
+    private static int argb(int alpha, int rgb) { return (Math.max(0, Math.min(255, alpha)) << 24) | rgb; }
+
+    /** A hollow square of the given half-size and thickness around (0, 0). */
+    private static void frame(MapElementGraphics g, int half, int thick, int color) {
+        g.fill(-half, -half, half, -half + thick, color);
+        g.fill(-half, half - thick, half, half, color);
+        g.fill(-half, -half + thick, -half + thick, half - thick, color);
+        g.fill(half - thick, -half + thick, half, half - thick, color);
     }
 
     @Override public boolean shouldRender(ElementRenderLocation location, boolean shadow) {

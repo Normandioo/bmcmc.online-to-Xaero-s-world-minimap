@@ -38,6 +38,10 @@ Ponha o jar na pasta `mods` junto com Fabric API e o Xaero's. Abra o jogo uma ve
 
 `/territories` (liga/desliga) · `/territories reload` · `/territories status`
 
+## Plugin de servidor
+
+A pasta `plugin/` tem o **BmcWar**, um plugin Paper que faz a captura de cidades pelo relógio e troca os ícones do dynmap que o mod e o site leem. Veja `plugin/README.md`.
+
 ## Se o Xaero's atualizar
 
 O mod depende de duas coisas internas do Xaero's: `HighlighterRegistry.end()` (onde nos registramos) e a classe `AbstractHighlighter` (World Map e Minimap). Se uma atualização mudar isso, o mod simplesmente não pinta nada e o log mostra o erro do mixin; basta recompilar contra o jar novo e ajustar os nomes.
@@ -103,3 +107,73 @@ Botão **WAR** no canto superior direito do World Map (ou `/territories war`). T
 
 - Cada guerra ativa ganha uma **barra dividida entre os lados** (na lista e no topo do detalhe), proporcional ao que cada lado tomou do outro: cidades capturadas que estão em poder de um lado e pertencem a países do lado oposto. A linha abaixo diz quem está na frente ("Attackers are ahead"), empate ou "No captures yet".
 - É uma medida simples (conta de capturas); a pontuação oficial de capitulação (7.9) continua só no site.
+
+## 1.5.0: ajustes de desempenho e de interface
+
+- **Cores da guerra mais rápidas:** ao abrir, trocar ou fechar uma guerra/aliança só as regiões do mapa cujas cores realmente mudam são redesenhadas (de uma guerra para outra, quase nada), as mais próximas de você primeiro. Se ainda achar lento, desligue "Grey out others in wars" no menu BMC: aí só os países da guerra mudam.
+- **Destaque da cidade:** ao ir até uma cidade (pelo cartão do jogador ou pela guerra) ela ganha uma moldura dourada e anéis que pulsam por 6 segundos, e o nome aparece mesmo com pouco zoom.
+- **Textos dentro das caixas:** títulos, rótulos, nomes e linhas longas agora são cortados com "..." em vez de passar da caixa, e o cartão do jogador não sai mais da tela.
+- **Alianças por país:** a aba Alianças começa só com um filtro. Escolha um país para ver seus aliados e as alianças dele (ou "All alliances" para a lista completa).
+- **Botão BMC (logo do site) ao lado do WAR:** menu para ajustar a intensidade da cor dos territórios e das fronteiras (passos de 10%), mostrar/ocultar territórios, cidades, nomes, painel e província no tooltip. Tudo é salvo no config.
+- **Marcadores das cidades:** usa os ícones do próprio site (`icons/<tipo>.png`, baixados na hora). "City markers" no menu BMC alterna para os quadrados simples de antes. Opções no config: `markerStyle` (`site` ou `simple`), `markerIconUrl`, `logoUrl`, `warGreyOthers`.
+
+## 1.5.1
+
+- Títulos em negrito eram medidos como texto normal e ainda passavam da caixa; agora são medidos em negrito e cortados com "...".
+- O tooltip do mapa ("País - Província") passou da largura da tela com nomes longos: agora cabe na tela (só o país, e cortado se preciso).
+
+## 1.6.0: cores de guerra instantâneas
+
+- As cores de guerra/aliança deixaram de passar pelo Xaero's (que redesenha região por região, devagar): o mod agora desenha as cores **ele mesmo** por cima do World Map. Cada país é cortado em células de 4 blocos, as células da mesma cor viram retângulos e só os que aparecem na tela são preenchidos a cada quadro. Abrir, trocar ou fechar uma guerra é imediato.
+- Como o mod precisa saber onde cada bloco está na tela (calculado a partir da câmera do Xaero's), a cada quadro ele confere isso com o bloco que o próprio Xaero's diz estar sob o mouse. Se algum dia não bater, o desenho próprio se desliga sozinho (aviso no log) e volta o método antigo, mais lento.
+- Menu BMC: "Instant war colours" liga/desliga isso (config `warOverlay`).
+- Diferenças: as cores de guerra aparecem só no World Map (o minimapa continua com as cores normais), as fronteiras são um pouco mais "quadradas" (células de 4 blocos) e as cores ficam por cima dos ícones das cidades, de leve.
+
+## 1.6.1: menos peso no mapa
+
+- O desenho próprio das cores de guerra (1.6.0) usava milhares de retângulos por quadro e derrubava o FPS. Agora ele guarda 5 níveis de detalhe (células de 4 a 64 blocos) e usa o mais grosso que ainda passa de ~6 pixels na tela: de ~5000 preenchimentos por quadro caiu para menos de 500 (menos ainda com zoom).
+- A atualização automática (ao entrar no mundo e a cada 30 min) só manda o Xaero's repintar o mapa quando formas ou cores dos territórios realmente mudaram. Um export novo só com jogadores, guerras etc. não mexe mais no mapa.
+
+## 1.6.2: volta a pintar só pelo Xaero's
+
+- Removido o desenho próprio das cores de guerra (1.6.0/1.6.1): as cores de guerra e de aliança voltaram a ser pintadas pelo Xaero's, como na 1.5.x, sem nada por cima do mapa. A opção "Instant war colours" e `warOverlay` saíram.
+- Mantido da 1.6.1: a atualização automática só manda o Xaero's repintar quando formas ou cores dos territórios mudaram.
+- Mantido da 1.5.0: ao abrir/trocar uma guerra, só as regiões cujas cores mudam são repintadas (as mais próximas de você primeiro); desligar "Grey out others in wars" no menu BMC deixa isso bem mais rápido.
+
+## 1.7.0: dynmap em tempo real
+
+O mod passa a ler o dynmap do servidor pelo mesmo endereço que o site usa (`https://bmcmc.online/dynmap/`, que o site repassa ao servidor). Só consulta enquanto o World Map está aberto.
+
+- **Jogadores online no mapa:** ponto verde com o nome do jogador no site (o nome do jogo é ligado ao do site pelo `ign` do `players.json`); clicar abre o cartão dele. Quem o dynmap esconde continua escondido. Atualiza a cada `dynmapRefreshMs` (padrão 1000, mínimo 500).
+- **Cartão do jogador:** linha **Online now at X, Z (click to go)**, que leva a câmera até ele, ou **Status: Offline**. Na lista de população do país, quem está online ganha um ponto verde.
+- **Controle de guerra ao vivo:** guerras marcadas `"live": true` no `diplomacy.json` (sem `map`) leem no dynmap quem segura cada cidade, igual ao site (`js/warlive.js`): o marcador é achado pelo id `Nome(País)` (ou o id do mapa `marker__Nome-lp-País-rp-__Tipo`), pelo nome, ou pelo marcador mais próximo (até 8 blocos); o ícone diz quem segura: `...Red` = primeiro lado, `...Blue` = segundo, `...Green` = terceiro, `...Contested`, `...Uncontrolled`; ícone sem isso não muda nada. O que o dynmap diz vale por cima do `captured`. A lista de capturadas, o "quem está ganhando" e as cores do mapa usam isso, e atualizam quando os marcadores mudam (a cada 8 s com o menu da guerra aberto). A lista mostra "Live from dynmap".
+- **Exportador do site:** `war.live` agora vai no `territories.json` (precisa rodar o workflow para a guerra aparecer como ao vivo).
+- **Menu BMC:** "Online players" e "Live war control". Config: `dynmapUrl`, `dynmapWorld`, `dynmapRefreshMs`, `showOnlinePlayers`, `liveWar`.
+- Só vale para o mundo principal (`world`). Marcadores de mar (sea tiles) não são lidos.
+
+## 1.8.0: jogadores ao vivo, pontos por cidade e avisos no chat
+
+- **Jogadores quase instantâneos:** o mod pergunta ao dynmap a cada 1 s (`dynmapRefreshMs`, mínimo 500). Quem está carregado perto de você é posicionado pelo próprio jogo (exato, sem espera), e todos os marcadores deslizam até o ponto novo em vez de pular.
+- **Cabeça e bandeira no marcador:** a cabeça do jogador (a mesma imagem que o site usa, `tiles/faces/32x32/<conta>.png` do dynmap) com a bandeira da nação dele ao lado, como no site. A nação vem das listas de população dos países. Sem a imagem, aparece um quadrado verde.
+- **Painel da guerra mais enxuto:** saíram o tipo, o texto da regra, o "No allies" e a explicação da barra. Ficam o status, quem está ganhando, quando começou, os lados e as cidades.
+- **Cidades por país, recolhíveis:** abaixo de cada país de um lado há a lista das cidades que ele ainda segura (clique em **[+]** para abrir), e abaixo do lado há **Captured from the enemy**, com o que ele tomou. Ao capturar uma cidade ela sai da lista de quem segurava e entra na de quem tomou. Há também **Contested or uncontrolled**. Clique no nome para ir até a cidade; o número à direita é o valor dela.
+- **Roda do mouse:** com o mouse sobre o menu de guerra, a roda rola o menu em vez de dar zoom no mapa (os botões Up/Down continuam).
+- **Barra "Who is winning" por pontos:** cada cidade vale pontos pela regra do site (Lei 7.9: 150 pontos por reino, divididos entre os tipos Small/Medium/Large que ele tem e, dentro de cada tipo, igualmente entre as cidades; reino sem assentamentos vale 150 pela capital). A barra mostra a % de pontos que cada lado segura agora (as próprias cidades que não foram tomadas, mais as que tomou). O mod não tem o mapa de regiões do site, então o reino é o país da cidade (ou o nome do membro, como "Eleyetia" para USE e Mesea).
+- **Aviso no chat:** quando uma cidade é capturada, retomada ou fica contestada numa guerra, o mod escreve no chat, por exemplo `[Lombrigan War] Okeham (Greneshire) was captured by Defenders`. Funciona com o mapa fechado: enquanto há uma guerra `live`, o mod lê os marcadores do dynmap em segundo plano a cada 20 s. A primeira leitura só define o ponto de partida (entrar no jogo não anuncia o que já foi tomado), e mais de 5 mudanças de uma vez viram uma linha só. Liga/desliga em **Chat alerts for captures** no menu BMC (`chatAlerts`).
+
+## 1.9.0: limites de captura no mapa e Lei 7
+
+**Lei 7 no menu da guerra:** status In Play / Encircled por cidade, bloco "Front (Law 7)", empates para a Staff e Capitulation por nação (`data/WarFront.java`, porte do `WarGraph` do plugin; usa `network`, `shortCircuits`, `supplyCapitals`, `bridges` do `territories.json`).
+
+
+O site passou a ter **limites de captura** (`gaia/capture.svg`): a área que um lado precisa ocupar para tomar uma cidade, quando ela é diferente da província. O `territories.json` ganhou a chave `zones` (uma por cidade com limite desenhado; `name` e `country` casam com as localidades, e os `rings` seguem a regra par-ímpar como os de `provinces`). O plugin de servidor BmcWar conta exatamente essa área.
+
+- **Contorno tracejado no mapa:** no mapa grande e no minimapa do Xaero's, branco e semitransparente. Fica **desligado por padrão**: ligue em **Capture limits** no menu BMC (`showCaptureLimits` no config).
+- **Em guerra:** no painel da guerra, o contorno de cada cidade usa a cor do lado que a segura agora (amarelo = contestada, cinza = sem dono), seguindo o que o dynmap diz numa guerra ao vivo. As cidades de fora da guerra continuam brancas.
+- **Compatibilidade:** arquivos sem `zones` funcionam como antes. Coordenadas decimais nas zonas não quebram a leitura.
+- O contorno é de 1 bloco, como as bordas dos países, e os traços são de 8 blocos com 5 de intervalo; com muito zoom out viram pontilhado.
+- **Tipo da cidade com a cor da guerra:** numa guerra ao vivo o site passou a exportar o `kind` das cidades com a cor do lado (`SmallRed`, `FortBlue`, `SmallCapitalRed`). O mod tira esse sufixo ao ler o arquivo, para que ícones, regra de capital e os pontos por cidade da guerra continuem certos.
+- **Contorno em guerra mais visível:** no painel da guerra a terra já é pintada com as cores dos lados, e o traço sumia nela. Agora o traço fica numa cor mais clara, cheia, com uma sombra escura nos blocos ao lado.
+- **Tipo da cidade com a cor da guerra:** numa guerra ao vivo o site passou a exportar o `kind` das cidades com a cor do lado (`SmallRed`, `FortBlue`, `SmallCapitalRed`). O mod tira esse sufixo ao ler o arquivo, para que ícones, regra de capital e os **pontos (valor) de cada cidade** na guerra continuem certos. Sem isso, 16 cidades perdiam o valor e o total de 4 países da guerra deixava de somar 150.
+- **Contorno em guerra mais visível:** no painel da guerra a terra já é pintada com as cores dos lados, e o traço sumia nela. Agora o traço fica numa cor mais clara, cheia, com uma sombra escura nos blocos ao lado.
+

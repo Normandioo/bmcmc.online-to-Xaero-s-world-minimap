@@ -26,12 +26,33 @@ public final class Config {
     /** Draw the cities from the site on Xaero's World Map, and their names. */
     public boolean showLocalities = true;
     public boolean showLocalityNames = true;
+    /** City markers: "site" = the site's own icons, "simple" = plain coloured squares. */
+    public String markerStyle = "site";
+    /** Where the site keeps its marker icons (Small.png, LargeCapital.png...). */
+    public String markerIconUrl = "https://bmcmc.online/icons/";
     /** Raise to see small cities and names at lower zoom, lower to see fewer. */
     public double localityZoomBias = 1.0;
     /** Zoom the map to at least this when jumping to a lord's city from the player card (never zooms out). 0 = keep the zoom. */
     public double goToZoom = 1.5;
     /** The WAR button on Xaero's World Map (and /territories war): wars, alliances and diplomatic timers from the site. */
     public boolean showWarMenu = true;
+    /** In the war and alliance views, grey out the countries that are not part of it (a bit slower to draw than leaving them alone). */
+    public boolean warGreyOthers = true;
+    /** The site's dynmap (the site forwards /dynmap/ to the server's) and the world it shows. Used for online players and live war control. */
+    public String dynmapUrl = "https://bmcmc.online/dynmap/";
+    public String dynmapWorld = "world";
+    /** Milliseconds between asking dynmap who is online (only while the World Map is open). Minimum 500. */
+    public int dynmapRefreshMs = 1000;
+    /** Show online players on the World Map, and "Online now" in the player card. */
+    public boolean showOnlinePlayers = true;
+    /** Wars marked "live" on the site take who holds each city from dynmap's markers, as the site does. */
+    public boolean liveWar = true;
+    /** Say in the chat when a city is captured (or contested) in a live war, even with the map closed. */
+    public boolean chatAlerts = true;
+    /** Draw the site's capture limits (the land a side must hold to take a city) as dashed outlines on the map. Off until you turn it on. */
+    public boolean showCaptureLimits = false;
+    /** Where the site's logo (the BMC button's picture) comes from. */
+    public String logoUrl = "https://bmcmc.online/favicon.ico";
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
@@ -47,6 +68,7 @@ public final class Config {
         }
         c.fillAlpha = Math.max(0, Math.min(255, c.fillAlpha));
         c.borderAlpha = Math.max(0, Math.min(255, c.borderAlpha));
+        c.dynmapRefreshMs = Math.max(500, c.dynmapRefreshMs);
         c.save(file);   // writes defaults the first time, and adds options new versions introduce
         return c;
     }

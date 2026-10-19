@@ -1,6 +1,7 @@
 package com.cumania.territories.compat;
 
 import com.cumania.territories.TerritoryManager;
+import com.cumania.territories.data.DynmapClient;
 import com.cumania.territories.data.FlagCache;
 import com.cumania.territories.data.PanelModel;
 import com.cumania.territories.data.SkinCache;
@@ -36,7 +37,10 @@ public final class CountryPanel {
     private static volatile TerritoryFile.Locality locality;
     private static int mouseX, mouseY, boxW, boxH;   // last drawn box, in GUI pixels
 
-    private static final int MENU_W = 190, GAP = 8;
+    private static final int MENU_W = 190, GAP = 8, ONLINE_DOT = 7;
+
+    /** Whether dynmap says this person (by the site's name) is online right now. */
+    private static boolean isOnline(String siteName) { return TerritoryManager.config().showOnlinePlayers && DynmapClient.find(siteName) != null; }
     private static volatile String selectedPlayer;
     private static int menuX, menuW, menuH, linkY0, linkY1;   // the player card's box (menuW 0 = not shown) and its copy-link line
     private static long copiedAt;
@@ -47,7 +51,7 @@ public final class CountryPanel {
 
     /** Called from the GuiMap.mapClicked mixin (blocks under the mouse, and the city if one was clicked). */
     public static void onMapClick(int blockX, int blockZ, TerritoryFile.Locality clickedLocality) {
-        if (WarMenu.onClick()) return;
+        if (SettingsMenu.onClick() || WarMenu.onClick()) return;
         if (!TerritoryManager.active() || !TerritoryManager.config().showPanel) return;
         boolean inside = boxW > 0 && mouseX >= LEFT && mouseX <= LEFT + boxW && mouseY >= TOP && mouseY <= TOP + boxH;
         if (inside) {
@@ -75,6 +79,22 @@ public final class CountryPanel {
         }
         locality = null;
         TerritoryManager.select(index.countryAtBlock(blockX, blockZ));
+    }
+
+    /** A player clicked on the map (or anywhere else): open their card beside their country's panel. */
+    public static void openPlayer(String siteName) {
+        if (SettingsMenu.onClick() || WarMenu.onClick()) return;
+        TerritoryIndex index = TerritoryManager.index();
+        TerritoryFile.Player record = index.player(siteName);
+        selectedPlayer = siteName;
+        copiedAt = 0;
+        locality = null;
+        int country = -1;
+        if (record != null && record.current != null) {   // the player's nation, from their current affiliations
+            for (String a : record.current) for (int c = 0; c < index.countryCount() && country < 0; c++) if (a.toLowerCase().contains(index.countryName(c).toLowerCase())) country = c;
+        }
+        if (country >= 0) TerritoryManager.select(country);
+        else if (TerritoryManager.selected() < 0) { var online = DynmapClient.find(siteName); if (online != null) TerritoryManager.select(index.countryAtBlock((int) online.x(), (int) online.z())); }
     }
 
     /** Click on one of the player's lordships: glide the map there. */
@@ -110,6 +130,7 @@ public final class CountryPanel {
         Font font = mc.font;
         int innerW = WIDTH - 2 * PAD;
 
+        if (TerritoryManager.config().showOnlinePlayers) DynmapClient.wantPlayers();
         // ---- content ----
         List<PanelModel.Line> lines = PanelModel.build(index, c, loc);
         String title = "";
@@ -169,7 +190,7 @@ public final class CountryPanel {
         g.fill(x0, y0, x0 + boxW, y0 + HEADER_H, 0xFF000000 | dim(titleRgb)); // header tinted with the country's colour
         g.fill(x0, y0 + HEADER_H - 1, x0 + boxW, y0 + HEADER_H, accent);
 
-        Component titleText = Component.literal(title).withStyle(ChatFormatting.BOLD);
+        Component titleText = Component.literal(Fit.bold(font, title, boxW - 34)).withStyle(ChatFormatting.BOLD);
         g.drawString(font, titleText, x0 + (boxW - font.width(titleText)) / 2, y0 + 7, 0xFFFFFFFF, true);
         g.drawString(font, "x", x0 + boxW - 12, y0 + 7, 0xFFCCCCCC, true);
 
@@ -185,11 +206,11 @@ public final class CountryPanel {
         if (cut) g.drawString(font, "...", x0 + PAD, y, MUTED, false);
 
         String who = selectedPlayer;
-        if (who != null) renderPlayer(g, font, mc, who, x0 + boxW + GAP, y0, titleRgb, available); else { menuW = 0; goHits.clear(); }
+        if (who != null) renderPlayer(g, font, mc, who, Math.max(x0, Math.min(x0 + boxW + GAP, mc.getWindow().getGuiScaledWidth() - MENU_W - 4)), y0, titleRgb, available); else { menuW = 0; goHits.clear(); }
     }
 
     private static void addRow(List<Row> rows, Font font, String label, String text, int innerW) {
-        if (font.width(label) <= LABEL_W - 6 && font.width(text) <= innerW - LABEL_W) rows.add(new Pair(label, text));
+        if (font.width(label.toUpperCase()) <= LABEL_W - 6 && font.width(text) <= innerW - LABEL_W) rows.add(new Pair(label, text));
         else rows.add(new Block(label, PanelModel.wrap(text, innerW, font::width)));
     }
 
@@ -199,7 +220,7 @@ public final class CountryPanel {
         List<String> line = new ArrayList<>();
         int used = 0;
         for (int i = 0; i < names.size(); i++) {
-            int w = font.width(names.get(i)) + (i < names.size() - 1 ? font.width(", ") : 0);
+            int w = font.width(names.get(i)) + (i < names.size() - 1 ? font.width(", ") : 0) + (isOnline(names.get(i)) ? ONLINE_DOT : 0);
             if (!line.isEmpty() && used + w > innerW) { lines.add(line); line = new ArrayList<>(); used = 0; }
             line.add(names.get(i)); used += w;
         }
@@ -212,35 +233,38 @@ public final class CountryPanel {
             if (row instanceof Section s) {
                 y += 2;
                 g.fill(x0 + PAD, y, x0 + boxW - PAD, y + 1, 0xFF3A3A3A);
-                g.drawString(font, s.title().toUpperCase(), x0 + PAD, y + 4, 0xFF000000 | TerritoryColors.lighten(s.rgb() == 0 ? 0xAAAAAA : s.rgb(), 0.35), true);
+                g.drawString(font, Fit.text(font, s.title().toUpperCase(), boxW - 2 * PAD), x0 + PAD, y + 4, 0xFF000000 | TerritoryColors.lighten(s.rgb() == 0 ? 0xAAAAAA : s.rgb(), 0.35), true);
                 y += LINE + 4;
             } else if (row instanceof Pair p) {
-                g.drawString(font, p.label().toUpperCase(), x0 + PAD, y, MUTED, false);
-                g.drawString(font, p.value(), x0 + PAD + LABEL_W, y, TEXT, true);
+                g.drawString(font, Fit.text(font, p.label().toUpperCase(), LABEL_W - 4), x0 + PAD, y, MUTED, false);
+                g.drawString(font, Fit.text(font, p.value(), boxW - 2 * PAD - LABEL_W), x0 + PAD + LABEL_W, y, TEXT, true);
                 y += LINE + 2;
             } else if (row instanceof Block b) {
-                if (!b.label().isEmpty()) { g.drawString(font, b.label().toUpperCase(), x0 + PAD, y, MUTED, false); y += LINE; }
-                for (String part : b.value()) { g.drawString(font, part, x0 + PAD, y, TEXT, true); y += LINE; }
+                if (!b.label().isEmpty()) { g.drawString(font, Fit.text(font, b.label().toUpperCase(), boxW - 2 * PAD), x0 + PAD, y, MUTED, false); y += LINE; }
+                for (String part : b.value()) { g.drawString(font, Fit.text(font, part, boxW - 2 * PAD), x0 + PAD, y, TEXT, true); y += LINE; }
                 y += 2;
             } else if (row instanceof Go go) {
                 int top = y;
                 int width = 0;
                 for (String part : go.value()) width = Math.max(width, font.width(part));
                 boolean hover = mouseX >= x0 + PAD && mouseX < x0 + PAD + width && mouseY >= top - 1 && mouseY < top + go.value().size() * LINE - 1;
-                for (String part : go.value()) { g.drawString(font, part, x0 + PAD, y, hover ? 0xFFFFFFFF : 0xFF8FD0FF, true); y += LINE; }
+                for (String part : go.value()) { g.drawString(font, Fit.text(font, part, boxW - 2 * PAD), x0 + PAD, y, hover ? 0xFFFFFFFF : 0xFF8FD0FF, true); y += LINE; }
                 if (!recordHits) goHits.add(new GoHit(x0 + PAD, top - 1, x0 + PAD + width, y - 1, go.target()));
                 y += 2;
             } else if (row instanceof Names n) {
-                g.drawString(font, n.label().toUpperCase(), x0 + PAD, y, MUTED, false);
+                g.drawString(font, Fit.text(font, n.label().toUpperCase(), boxW - 2 * PAD), x0 + PAD, y, MUTED, false);
                 y += LINE;
                 for (List<String> line : n.lines()) {
                     int x = x0 + PAD;
                     for (int i = 0; i < line.size(); i++) {
                         String name = line.get(i);
-                        int w = font.width(name);
+                        String shown = Fit.text(font, name, boxW - 2 * PAD - 8);
+                        boolean online = isOnline(name);
+                        int w = font.width(shown) + (online ? ONLINE_DOT : 0);
                         boolean hover = mouseX >= x && mouseX < x + w && mouseY >= y - 1 && mouseY < y + LINE - 1;
                         boolean open = name.equals(selectedPlayer);
-                        g.drawString(font, name, x, y, hover || open ? 0xFFFFFFFF : 0xFF8FD0FF, true);
+                        if (online) g.fill(x, y + 2, x + 4, y + 6, 0xFF3CD65A);
+                        g.drawString(font, shown, x + (online ? ONLINE_DOT : 0), y, hover || open ? 0xFFFFFFFF : 0xFF8FD0FF, true);
                         if (hover || open) g.fill(x, y + 9, x + w, y + 10, 0xFFFFFFFF);
                         if (recordHits) nameHits.add(new NameHit(x, y - 1, x + w, y + LINE - 1, name));
                         x += w;
@@ -282,6 +306,15 @@ public final class CountryPanel {
         int innerW = MENU_W - 2 * PAD;
         goHits.clear();
         List<Row> rows = new ArrayList<>();
+        if (TerritoryManager.config().showOnlinePlayers) {
+            DynmapClient.wantPlayers();
+            DynmapClient.Online online = DynmapClient.find(who);
+            if (online != null) {
+                TerritoryFile.Locality here = new TerritoryFile.Locality();
+                here.name = who; here.x = (int) Math.round(online.x()); here.z = (int) Math.round(online.z());
+                rows.add(new Go(PanelModel.wrap("Online now at " + here.x + ", " + here.z + " (click to go)", innerW, font::width), here));
+            } else if (DynmapClient.playersKnown()) addRow(rows, font, "Status", "Offline", innerW);
+        }
         if (p != null) {
             if (p.ign != null && !p.ign.isBlank()) addRow(rows, font, "In-game", p.ign, innerW);
             if (p.country != null && !p.country.isBlank()) addRow(rows, font, "From", p.country, innerW);
@@ -337,7 +370,7 @@ public final class CountryPanel {
         g.fill(x0, y0, x0 + menuW, y0 + menuH, 0xF0121212);
         g.fill(x0, y0, x0 + menuW, y0 + HEADER_H, 0xFF000000 | dim(rgb));
         g.fill(x0, y0 + HEADER_H - 1, x0 + menuW, y0 + HEADER_H, accent);
-        Component titleText = Component.literal(who).withStyle(ChatFormatting.BOLD);
+        Component titleText = Component.literal(Fit.bold(font, who, menuW - 34)).withStyle(ChatFormatting.BOLD);
         g.drawString(font, titleText, x0 + (menuW - font.width(titleText)) / 2, y0 + 7, 0xFFFFFFFF, true);
         g.drawString(font, "x", x0 + menuW - 12, y0 + 7, 0xFFCCCCCC, true);
 
