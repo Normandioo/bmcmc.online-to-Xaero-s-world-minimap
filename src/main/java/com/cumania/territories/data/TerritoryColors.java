@@ -67,9 +67,62 @@ public final class TerritoryColors {
                 out[(z << 4) | x] = pack(rgb, edge ? borderA : fillA);
             }
         }
+        if (paint != null && com.cumania.territories.TerritoryManager.config().showBorderGlow) glowBorder(index, paint, baseX, baseZ, out);
         if (limit != null) overlayLimits(index, limit, out);
         overlayFront(front, out);
         return true;
+    }
+
+    // ---- the border between two sides ----
+
+    private static final int GLOW = 3;   // blocks of glow on each side of the border
+
+    /** The war colour of the land at a block (a side's, contested yellow...), or -1 for land that is not painted by the war. */
+    private static int warRgb(TerritoryIndex index, WarPaint.Paint paint, int bx, int bz) {
+        int country = index.countryAtBlock(bx, bz);
+        if (country < 0) return -1;
+        int painted = country < paint.countryRgb().length ? paint.countryRgb()[country] : -1;
+        if (!paint.provinceRgb().isEmpty()) {
+            for (Map.Entry<Integer, int[]> e : paint.provinceBounds().entrySet()) {
+                int[] b = e.getValue();
+                if (bx < b[0] || bx > b[2] || bz < b[1] || bz > b[3] || index.provinceAtBlock(bx, bz) != e.getKey()) continue;
+                return paint.provinceRgb().get(e.getKey());
+            }
+        }
+        return painted;
+    }
+
+    private static final int[][] AROUND = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}, {1, 1}, {-1, -1}, {1, -1}, {-1, 1}};
+
+    /**
+     * Along the whole front, where the land of one side meets the land of another: a bright band on both sides, solid at the line and
+     * fading over GLOW blocks, with a few yellow sparks. Each side's band is a lighter shade of its own colour.
+     */
+    private static void glowBorder(TerritoryIndex index, WarPaint.Paint paint, int baseX, int baseZ, int[] out) {
+        boolean two = false;
+        int first = -1;
+        for (int rgb : paint.countryRgb()) { if (rgb < 0) continue; if (first < 0) first = rgb; else if (rgb != first) { two = true; break; } }
+        if (!two && paint.provinceRgb().isEmpty()) return;
+        for (int z = 0; z < 16; z++) {
+            for (int x = 0; x < 16; x++) {
+                int bx = baseX + x, bz = baseZ + z;
+                int own = warRgb(index, paint, bx, bz);
+                if (own < 0) continue;
+                int dist = 0;
+                search:
+                for (int d = 1; d <= GLOW; d++) {
+                    for (int[] o : AROUND) {
+                        int other = warRgb(index, paint, bx + o[0] * d, bz + o[1] * d);
+                        if (other >= 0 && other != own) { dist = d; break search; }
+                    }
+                }
+                if (dist == 0) continue;
+                if (dist <= 2 && Math.floorMod(bx * 7 + bz * 13, 11) == 0) { out[(z << 4) | x] = pack(0xFFE060, 255); continue; }
+                double share = dist == 1 ? 0.7 : dist == 2 ? 0.4 : 0.18;
+                int alpha = dist == 1 ? 255 : dist == 2 ? 235 : 200;
+                out[(z << 4) | x] = pack(lighten(own, share), alpha);
+            }
+        }
     }
 
     // ---- the front of a war ----

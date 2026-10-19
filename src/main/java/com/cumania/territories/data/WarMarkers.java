@@ -10,7 +10,6 @@ import java.util.Set;
 
 /**
  * What the map marks on top of a war, worked out once a second:
- *   CLASH  where the two colours meet on the front (the middle of each line that puts a city In Play)
  *   SWORD  on a city with online players of both sides inside its territory (its capture limit, else its province)
  *   FLAG   on a city that was just taken, in the colour of whoever took it (FLAG_MS after the change was seen)
  * The first reading of a war only sets the starting point, so nothing already taken is flagged when you join. No Minecraft classes in here.
@@ -18,9 +17,8 @@ import java.util.Set;
 public final class WarMarkers {
     private WarMarkers() {}
 
-    public enum Kind { CLASH, SWORD, FLAG }
+    public enum Kind { SWORD, FLAG }
 
-    /** rgb2 is only used by CLASH (the other side's colour). */
     public record Marker(Kind kind, double x, double z, int rgb, int rgb2) {}
 
     public static final long FLAG_MS = 10 * 60_000L;
@@ -73,13 +71,6 @@ public final class WarMarkers {
         lastHolder.put(war.id, now_);
         mine.values().removeIf(f -> now - f.at() > FLAG_MS);
         for (Flag f : mine.values()) out.add(new Marker(Kind.FLAG, f.x(), f.z(), f.rgb(), 0));
-
-        // the front: the middle of every hot line
-        for (WarFront.Hot h : front.hotLines()) {
-            int ca = WarPaint.hotColor(war.sides, h.controlA()), cb = WarPaint.hotColor(war.sides, h.controlB());
-            if (ca < 0 || cb < 0) continue;
-            out.add(new Marker(Kind.CLASH, (h.a().x + h.b().x) / 2.0, (h.a().z + h.b().z) / 2.0, ca, cb));
-        }
 
         // swords: players of two different sides inside the same city's territory
         Map<String, Set<Integer>> sidesIn = new HashMap<>();

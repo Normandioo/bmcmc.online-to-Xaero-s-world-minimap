@@ -2,7 +2,6 @@ package com.cumania.territories.compat;
 
 import com.cumania.territories.TerritoryManager;
 import com.cumania.territories.data.WarMarkers;
-import com.cumania.territories.data.WarPaint;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.resources.ResourceKey;
@@ -19,7 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * What a war puts on Xaero's World Map besides the colours (see WarMarkers): a glow where the two sides meet on the front, a sword on a
+ * What a war puts on Xaero's World Map besides the colours (see WarMarkers): a sword on a
  * city where players of both sides are, a flag on a city just taken. Pixel art in map units like the city icons, so it keeps its size at
  * any zoom. Not clickable.
  */
@@ -44,10 +43,8 @@ public final class WarMarkerRenderer extends ElementRenderer<WarMarkers.Marker, 
             var config = TerritoryManager.config();
             List<WarMarkers.Marker> list = new ArrayList<>();
             if (TerritoryManager.active() && context.dimension == TerritoryManager.dimension()) {
-                boolean warView = WarPaint.current() != null;
                 for (WarMarkers.Marker m : WarMarkers.current()) {
                     boolean on = switch (m.kind()) {
-                        case CLASH -> config.showClash && warView;
                         case SWORD -> config.showSwords;
                         case FLAG -> config.showFlags;
                     };
@@ -105,37 +102,8 @@ public final class WarMarkerRenderer extends ElementRenderer<WarMarkers.Marker, 
                 WarArt.Art art = WarArt.flag(m.rgb(), (int) ((t / 380) % 2));
                 WarArt.rects(art, 4, -art.h() - 4, (x0, y0, x1, y1, c) -> graphics.fill(x0, y0, x1, y1, c));
             }
-            case CLASH -> clash(graphics, m, t);
         }
         return true;
-    }
-
-    /** Two rings, one in each side's colour, swelling and fading out of a bright spark where the colours meet. */
-    private static void clash(MapElementGraphics g, WarMarkers.Marker m, long now) {
-        long period = 1500;
-        float t0 = (now % period) / (float) period;
-        for (int ring = 0; ring < 2; ring++) {
-            float t = (t0 + ring * 0.5f) % 1f;
-            int alpha = (int) (230 * (1f - t));
-            if (alpha < 6) continue;
-            int half = 3 + (int) (t * 15);
-            frame(g, half, 2, argb(alpha, ring == 0 ? m.rgb() : m.rgb2()));
-        }
-        boolean flash = (now / 180) % 2 == 0;
-        g.fill(-2, -2, 2, 2, argb(255, flash ? 0xFFFFFF : 0xFFE060));
-        g.fill(-5, -1, 5, 1, argb(190, 0xFFFFFF));
-        g.fill(-1, -5, 1, 5, argb(190, 0xFFFFFF));
-        g.fill(-5, -1, -2, 1, argb(255, m.rgb()));
-        g.fill(2, -1, 5, 1, argb(255, m.rgb2()));
-    }
-
-    private static int argb(int alpha, int rgb) { return (Math.max(0, Math.min(255, alpha)) << 24) | (rgb & 0xFFFFFF); }
-
-    private static void frame(MapElementGraphics g, int half, int thick, int color) {
-        g.fill(-half, -half, half, -half + thick, color);
-        g.fill(-half, half - thick, half, half, color);
-        g.fill(-half, -half + thick, -half + thick, half - thick, color);
-        g.fill(half - thick, -half + thick, half, half - thick, color);
     }
 
     @Override public boolean shouldRender(ElementRenderLocation location, boolean shadow) {
