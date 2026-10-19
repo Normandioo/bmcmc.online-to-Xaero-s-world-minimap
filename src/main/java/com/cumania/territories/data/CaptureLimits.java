@@ -73,7 +73,6 @@ public final class CaptureLimits {
     }
 
     public boolean isEmpty() { return chunks.isEmpty(); }
-    public int zoneCount() { return zones.size(); }
 
     /** The outline blocks of the chunk (256 entries, zone index + 1 or 0), or null when it has none. */
     public short[] chunk(int cx, int cz) { return chunks.get(key(cx, cz)); }
