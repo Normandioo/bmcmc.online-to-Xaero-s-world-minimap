@@ -28,6 +28,9 @@ public final class WarMarkerRenderer extends ElementRenderer<WarMarkers.Marker, 
         ResourceKey<Level> dimension;
     }
 
+    /** How many map units each pixel of the sword and the flag takes. */
+    private static final int SCALE = 2;
+
     public static WarMarkerRenderer create() {
         Context context = new Context();
         return new WarMarkerRenderer(context, new Provider(), new Reader());
@@ -66,10 +69,10 @@ public final class WarMarkerRenderer extends ElementRenderer<WarMarkers.Marker, 
         @Override public int getInteractionBoxRight(WarMarkers.Marker m, Context c, float t) { return 0; }
         @Override public int getInteractionBoxTop(WarMarkers.Marker m, Context c, float t) { return 0; }
         @Override public int getInteractionBoxBottom(WarMarkers.Marker m, Context c, float t) { return 0; }
-        @Override public int getRenderBoxLeft(WarMarkers.Marker m, Context c, float t) { return -40; }
-        @Override public int getRenderBoxRight(WarMarkers.Marker m, Context c, float t) { return 40; }
-        @Override public int getRenderBoxTop(WarMarkers.Marker m, Context c, float t) { return -40; }
-        @Override public int getRenderBoxBottom(WarMarkers.Marker m, Context c, float t) { return 40; }
+        @Override public int getRenderBoxLeft(WarMarkers.Marker m, Context c, float t) { return -60; }
+        @Override public int getRenderBoxRight(WarMarkers.Marker m, Context c, float t) { return 60; }
+        @Override public int getRenderBoxTop(WarMarkers.Marker m, Context c, float t) { return -60; }
+        @Override public int getRenderBoxBottom(WarMarkers.Marker m, Context c, float t) { return 60; }
         @Override public int getLeftSideLength(WarMarkers.Marker m, Minecraft mc) { return 0; }
         @Override public String getMenuName(WarMarkers.Marker m) { return ""; }
         @Override public String getFilterName(WarMarkers.Marker m) { return ""; }
@@ -95,12 +98,12 @@ public final class WarMarkerRenderer extends ElementRenderer<WarMarkers.Marker, 
             case SWORD -> {
                 // up and to the left of the city's icon, trembling a pixel: fighting here
                 WarArt.Art art = WarArt.SWORD;
-                int jitter = (t / 240) % 2 == 0 ? 0 : 1;
-                WarArt.rects(art, -art.w() - 4 + jitter, -art.h() - 4 - jitter, (x0, y0, x1, y1, c) -> graphics.fill(x0, y0, x1, y1, c));
+                int jitter = (t / 240) % 2 == 0 ? 0 : SCALE / 2;
+                WarArt.rects(art, -art.w() * SCALE - 6 + jitter, -art.h() * SCALE - 6 - jitter, SCALE, (x0, y0, x1, y1, c) -> graphics.fill(x0, y0, x1, y1, c));
             }
             case FLAG -> {
                 WarArt.Art art = WarArt.flag(m.rgb(), (int) ((t / 380) % 2));
-                WarArt.rects(art, 4, -art.h() - 4, (x0, y0, x1, y1, c) -> graphics.fill(x0, y0, x1, y1, c));
+                WarArt.rects(art, 6, -art.h() * SCALE - 6, SCALE, (x0, y0, x1, y1, c) -> graphics.fill(x0, y0, x1, y1, c));
             }
         }
         return true;

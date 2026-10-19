@@ -10,13 +10,16 @@ final class WarArt {
     private static final int OUTLINE = 0xFF101010;
 
     /** Every cell as rectangles (a run of one colour along a row is one). */
-    static void rects(Art a, int ox, int oy, Rects out) {
+    static void rects(Art a, int ox, int oy, Rects out) { rects(a, ox, oy, 1, out); }
+
+    /** The same, each cell `scale` units wide. */
+    static void rects(Art a, int ox, int oy, int scale, Rects out) {
         for (int row = 0; row < a.h(); row++) {
             int col = 0;
             while (col < a.w()) {
                 int c = a.argb()[row * a.w() + col], end = col + 1;
                 while (end < a.w() && a.argb()[row * a.w() + end] == c) end++;
-                if (c != 0) out.rect(ox + col, oy + row, ox + end, oy + row + 1, c);
+                if (c != 0) out.rect(ox + col * scale, oy + row * scale, ox + end * scale, oy + (row + 1) * scale, c);
                 col = end;
             }
         }
