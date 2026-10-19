@@ -86,7 +86,7 @@ public final class SettingsMenu {
         if (!open) { panelH = 0; return; }
 
         // rows
-        int rowCount = page == 1 ? 7 : 9;
+        int rowCount = page == 1 ? 8 : 9;
         panelH = HEADER_H + 7 + rowCount * ROW + 14;
         panelH = Math.min(panelH, screenH - TOP - 6);
         int anchor = page == 1 ? btn2X : btnX;
@@ -104,6 +104,7 @@ public final class SettingsMenu {
         int y = y0 + HEADER_H + 7;
         if (page == 1) {
             y = toggle(g, font, x0, y, "Front lines", c.showFrontLines, () -> { c.showFrontLines = !c.showFrontLines; changed(true); });
+            y = toggle(g, font, x0, y, "Links inside a side (dotted)", c.showInnerLinks, () -> { c.showInnerLinks = !c.showInnerLinks; changed(true); });
             y = toggle(g, font, x0, y, "Swords (both sides inside a city)", c.showSwords, () -> { c.showSwords = !c.showSwords; changed(false); });
             y = toggle(g, font, x0, y, "Flags on cities just taken", c.showFlags, () -> { c.showFlags = !c.showFlags; changed(false); });
             y = toggle(g, font, x0, y, "Rings on cities In Play", c.showInPlayRings, () -> { c.showInPlayRings = !c.showInPlayRings; changed(false); });

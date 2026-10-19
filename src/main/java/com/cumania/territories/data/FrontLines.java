@@ -29,7 +29,10 @@ public final class FrontLines {
 
     private static long key(int a, int b) { return ((long) a << 32) ^ (b & 0xFFFFFFFFL); }
 
-    public static FrontLines build(List<Seg> segs) {
+    public static FrontLines build(List<Seg> segs) { return build(segs, false); }
+
+    /** dotted = one block wide, two blocks on and four off (the quiet lines inside a side); else three blocks wide and solid. */
+    public static FrontLines build(List<Seg> segs, boolean dotted) {
         if (segs == null || segs.isEmpty()) return EMPTY;
         List<Integer> palette = new ArrayList<>();
         Map<Long, short[]> chunks = new HashMap<>();
@@ -43,7 +46,9 @@ public final class FrontLines {
                 double t = (double) i / steps;
                 int cx = (int) Math.round(s.x0() + dx * t), cz = (int) Math.round(s.z0() + dz * t);
                 short v = (short) (t < 0.5 ? pa : pb);
-                for (int ox = -1; ox <= 1; ox++) for (int oz = -1; oz <= 1; oz++) {
+                if (dotted && i % 6 >= 2) continue;
+                int r = dotted ? 0 : 1;
+                for (int ox = -r; ox <= r; ox++) for (int oz = -r; oz <= r; oz++) {
                     int bx = cx + ox, bz = cz + oz;
                     short[] chunk = chunks.computeIfAbsent(key(bx >> 4, bz >> 4), c -> new short[256]);
                     chunk[((bz & 15) << 4) | (bx & 15)] = v;

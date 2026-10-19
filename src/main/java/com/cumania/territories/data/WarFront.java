@@ -80,6 +80,10 @@ public final class WarFront {
     /** A Connection between two cities of different sides that puts one of them In Play: the site draws it as a "hot" line (the front). */
     public record Hot(TerritoryFile.Locality a, TerritoryFile.Locality b, int controlA, int controlB) {}
     public List<Hot> hotLines() { return hot; }
+
+    private final List<Hot> inner = new ArrayList<>();
+    /** Connections between two cities held by the same side (the network inside it). */
+    public List<Hot> innerLines() { return inner; }
     public int sides() { return sides; }
 
     /** The front of the war the menu is showing, for the map to mark its In Play cities; null when none. */
@@ -246,6 +250,12 @@ public final class WarFront {
         if (g.hasNetwork) g.connect(war, edges, linkOpen, ownerSide);
         g.score(index, war);
         Set<String> drawn = new HashSet<>();
+        if (g.hasNetwork) for (String[] e : edges) {
+            var a = byKey.get(e[0]); var b = byKey.get(e[1]);
+            Unit ua = g.unitByCity.get(e[0]), ub = g.unitByCity.get(e[1]);
+            if (a == null || b == null || ua == null || ub == null || ua == ub) continue;
+            if (ua.control >= 0 && ua.control == ub.control) g.inner.add(new Hot(a, b, ua.control, ub.control));
+        }
         if (g.hasNetwork) for (String[] e : edges) {
             var a = byKey.get(e[0]); var b = byKey.get(e[1]);
             Unit ua = g.unitByCity.get(e[0]), ub = g.unitByCity.get(e[1]);
