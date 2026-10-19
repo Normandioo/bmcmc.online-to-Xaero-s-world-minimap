@@ -26,7 +26,9 @@ public final class WarEffects {
     private static void tick() {
         var config = TerritoryManager.config();
         var mc = net.minecraft.client.Minecraft.getInstance();
-        if (!TerritoryManager.active() || mc.player == null || !(config.showSwords || config.showFlags)) { WarMarkers.clear(); return; }
+        // a war view on the map keeps its colours up to date too, even with the war menu hidden or the map closed
+        boolean viewing = com.cumania.territories.data.WarPaint.current() != null;
+        if (!TerritoryManager.active() || mc.player == null || !(config.showSwords || config.showFlags || viewing)) { WarMarkers.clear(); return; }
         var index = TerritoryManager.index();
         var war = WarMarkers.followed(index);
         if (war == null) { WarMarkers.clear(); return; }

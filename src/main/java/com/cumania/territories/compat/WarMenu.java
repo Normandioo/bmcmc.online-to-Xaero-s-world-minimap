@@ -232,7 +232,7 @@ public final class WarMenu {
     /** dynmap's markers changed: if the open war is live, paint what it says now (only the regions that differ are redrawn). */
     public static void liveChanged() {
         Minecraft.getInstance().execute(() -> {
-            if (!open || warId == null) return;
+            if (warId == null) return;   // a war is being viewed (its menu may be hidden while the settings are open)
             var war = findWar(warId);
             if (war != null && war.live) WarPaint.apply(TerritoryManager.index(), WarPaint.forWar(TerritoryManager.index(), war));
         });
