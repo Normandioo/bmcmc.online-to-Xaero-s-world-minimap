@@ -159,7 +159,12 @@ O mod passa a ler o dynmap do servidor pelo mesmo endereço que o site usa (`htt
 - **Cidades por país, recolhíveis:** abaixo de cada país de um lado há a lista das cidades que ele ainda segura (clique em **[+]** para abrir), e abaixo do lado há **Captured from the enemy**, com o que ele tomou. Ao capturar uma cidade ela sai da lista de quem segurava e entra na de quem tomou. Há também **Contested or uncontrolled**. Clique no nome para ir até a cidade; o número à direita é o valor dela.
 - **Roda do mouse:** com o mouse sobre o menu de guerra, a roda rola o menu em vez de dar zoom no mapa (os botões Up/Down continuam).
 - **Barra "Who is winning" por pontos:** cada cidade vale pontos pela regra do site (Lei 7.9: 150 pontos por reino, divididos entre os tipos Small/Medium/Large que ele tem e, dentro de cada tipo, igualmente entre as cidades; reino sem assentamentos vale 150 pela capital). A barra mostra a % de pontos que cada lado segura agora (as próprias cidades que não foram tomadas, mais as que tomou). O mod não tem o mapa de regiões do site, então o reino é o país da cidade (ou o nome do membro, como "Eleyetia" para USE e Mesea).
-- **Aviso no chat:** quando uma cidade é capturada, retomada ou fica contestada numa guerra, o mod escreve no chat, por exemplo `[Lombrigan War] Okeham (Greneshire) was captured by Defenders`. Funciona com o mapa fechado: enquanto há uma guerra `live`, o mod lê os marcadores do dynmap em segundo plano a cada 20 s. A primeira leitura só define o ponto de partida (entrar no jogo não anuncia o que já foi tomado), e mais de 5 mudanças de uma vez viram uma linha só. Liga/desliga em **Chat alerts for captures** no menu BMC (`chatAlerts`).
+
+## 1.10.0: linhas da frente e tabela da guerra
+
+- **Linhas da frente (modo guerra):** como as linhas "hot" do mapa de guerra do site, o mapa desenha uma linha grossa, com borda escura, em cada Conexão que coloca uma cidade In Play, cada metade na cor do lado que segura aquela ponta. Liga/desliga em **Front lines in wars** no menu BMC (`showFrontLines`, ligado por padrão). Código em `data/FrontLines.java`.
+- **War slider by the minimap:** tabelinha ao lado do minimap do Xaero's com a Capitulation (7.9) de cada nação da guerra (barra + %; laranja = capital tomada; CAP = capitulou). Desligada por padrão (`warHud`). Segue a primeira guerra em andamento (uma `live` primeiro). Posição: `warHudCorner` = `minimap` (ao lado do minimap, do lado voltado para o centro da tela), `left` ou `right`, com `warHudX`/`warHudY`.
+- **Removido:** o aviso no chat de qual cidade mudou de mãos (`chatAlerts`).
 
 ## 1.9.1 / 1.9.0: limites de captura e Lei 7
 

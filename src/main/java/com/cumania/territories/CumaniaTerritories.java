@@ -1,7 +1,6 @@
 package com.cumania.territories;
 
 import net.fabricmc.api.ClientModInitializer;
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import org.slf4j.Logger;
@@ -16,11 +15,9 @@ public final class CumaniaTerritories implements ClientModInitializer {
         boolean worldMapLoaded = FabricLoader.getInstance().isModLoaded("xaeroworldmap");
         com.cumania.territories.data.DynmapClient.onMarkersChanged(() -> {
             if (worldMapLoaded) com.cumania.territories.compat.WarMenu.liveChanged();
-            CaptureAlerts.checkSoon();
         });
-        // a live war keeps being followed in the background (for the chat alerts) even with the map closed
-        int[] ticks = {0};
-        ClientTickEvents.END_CLIENT_TICK.register(client -> { if (++ticks[0] >= 20) { ticks[0] = 0; CaptureAlerts.keepWatching(); } });
+        // the war slider next to the minimap (a live war keeps being followed in the background while it is on)
+        com.cumania.territories.WarHud.register();
         TerritoryManager.init(FabricLoader.getInstance().getConfigDir());
         com.cumania.territories.command.TerritoryCommand.register();
         if (worldMapLoaded) com.cumania.territories.compat.WorldMapScreenHooks.register();

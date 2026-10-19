@@ -60,6 +60,9 @@ public final class WarFront {
     private final List<Tie> ties = new ArrayList<>();
     private final List<Integer> noCapital = new ArrayList<>();
     private final List<Score> scores = new ArrayList<>();
+    private final List<Hot> hot = new ArrayList<>();
+    /** Units u -> neighbours that put u In Play (the site's "by"). */
+    private final Map<Unit, Set<Unit>> putsInPlay = new HashMap<>();
     private int sides;
     private TerritoryFile.WarInfo war;
     private static volatile WarFront viewing;
@@ -73,6 +76,10 @@ public final class WarFront {
     /** Sides holding no Capital at all (nothing of theirs is reached, so nothing is Encircled). */
     public List<Integer> noCapital() { return noCapital; }
     public List<Score> scores() { return scores; }
+
+    /** A Connection between two cities of different sides that puts one of them In Play: the site draws it as a "hot" line (the front). */
+    public record Hot(TerritoryFile.Locality a, TerritoryFile.Locality b, int controlA, int controlB) {}
+    public List<Hot> hotLines() { return hot; }
     public int sides() { return sides; }
 
     /** The front of the war the menu is showing, for the map to mark its In Play cities; null when none. */
@@ -238,6 +245,14 @@ public final class WarFront {
         }
         if (g.hasNetwork) g.connect(war, edges, linkOpen, ownerSide);
         g.score(index, war);
+        if (g.hasNetwork) for (String[] e : edges) {
+            var a = byKey.get(e[0]); var b = byKey.get(e[1]);
+            Unit ua = g.unitByCity.get(e[0]), ub = g.unitByCity.get(e[1]);
+            if (a == null || b == null || ua == null || ub == null || ua == ub) continue;
+            if (ua.control == NEUTRAL || ub.control == NEUTRAL || ua.control == ub.control) continue;
+            if (!g.putsInPlay.getOrDefault(ua, Set.of()).contains(ub) && !g.putsInPlay.getOrDefault(ub, Set.of()).contains(ua)) continue;
+            g.hot.add(new Hot(a, b, ua.control, ub.control));
+        }
         return g;
     }
 
@@ -284,9 +299,9 @@ public final class WarFront {
             for (Unit v : u.neighbours.keySet()) {
                 int side = v.control;
                 if (side < 0 || side == u.control) continue;
-                if (!v.encircled) { u.inPlay = true; continue; }
+                if (!v.encircled) { u.inPlay = true; putsInPlay.computeIfAbsent(u, k -> new HashSet<>()).add(v); continue; }
                 boolean reconnects = u.neighbours.keySet().stream().anyMatch(w -> w != v && w.control == side && !w.encircled);
-                if (reconnects) u.inPlay = true;   // capturing it would break the pocket's encirclement
+                if (reconnects) { u.inPlay = true; putsInPlay.computeIfAbsent(u, k -> new HashSet<>()).add(v); }   // capturing it would break the pocket's encirclement
             }
         }
     }
