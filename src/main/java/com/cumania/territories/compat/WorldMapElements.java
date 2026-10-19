@@ -15,6 +15,7 @@ public final class WorldMapElements {
         if (handler == null || handler == registeredOn) return;
         handler.add(LocalityRenderer.create());
         handler.add(PlayerRenderer.create());
+        handler.add(WarMarkerRenderer.create());
         registeredOn = handler;
     }
 }

@@ -123,7 +123,7 @@ public final class WarPaint {
         return new Paint(rgb, provinces, bounds, zones, FrontLines.build(segs));
     }
 
-    private static int hotColor(List<TerritoryFile.Side> sides, int control) {
+    static int hotColor(List<TerritoryFile.Side> sides, int control) {
         if (control == WarFront.CONTESTED) return CONTESTED;
         return control >= 0 && control < sides.size() ? sideColor(sides.get(control), control) : -1;
     }

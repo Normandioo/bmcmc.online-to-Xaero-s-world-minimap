@@ -98,8 +98,6 @@ public final class SettingsMenu {
         y = toggle(g, font, x0, y, "Province in tooltip", c.showProvince, () -> { c.showProvince = !c.showProvince; changed(false); });
         y = toggle(g, font, x0, y, "Online players", c.showOnlinePlayers, () -> { c.showOnlinePlayers = !c.showOnlinePlayers; changed(false); });
         y = toggle(g, font, x0, y, "Live war control", c.liveWar, () -> { c.liveWar = !c.liveWar; changed(false); WarMenu.liveChanged(); });
-        y = toggle(g, font, x0, y, "Front lines in wars", c.showFrontLines, () -> { c.showFrontLines = !c.showFrontLines; changed(true); });
-        y = toggle(g, font, x0, y, "War slider by the minimap", c.warHud, () -> { c.warHud = !c.warHud; changed(false); });
         y = toggle(g, font, x0, y, TerritoryManager.index().limits().isEmpty() ? "Capture limits (none on the site)" : "Capture limits", c.showCaptureLimits, () -> { c.showCaptureLimits = !c.showCaptureLimits; changed(true); });
         y = toggle(g, font, x0, y, "Grey out others in wars", c.warGreyOthers, () -> { c.warGreyOthers = !c.warGreyOthers; changed(true); });
         g.drawString(font, Fit.text(font, "Saved to config/cumania_territories.json", PW - 2 * PAD), x0 + PAD, y + 3, 0xFF707070, false);
