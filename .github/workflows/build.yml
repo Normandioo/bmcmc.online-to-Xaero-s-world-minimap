@@ -73,11 +73,11 @@ jobs:
           name: BmcWar
           path: plugin/build/libs/*.jar
 
-  # Publishes a Release with the two jars. It runs on a pushed tag "vX.Y.Z", and also on a push to main / claude/dev when mod_version
+  # Publishes a Release with the two jars. It runs on a pushed tag "vX.Y.Z", and also on a push to main when mod_version
   # (gradle.properties) has no release yet: it then creates the tag itself. Notes: .github/release-notes/vX.Y.Z.md when it exists.
   release:
     name: Release
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
     needs: [mod, plugin]
     runs-on: ubuntu-latest
     permissions:

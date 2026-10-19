@@ -49,6 +49,8 @@ public final class Config {
     public boolean liveWar = true;
     /** Say in the chat when a city is captured (or contested) in a live war, even with the map closed. */
     public boolean chatAlerts = true;
+    /** Draw the site's capture limits (the land a side must hold to take a city) as dashed outlines on the map. Off until you turn it on. */
+    public boolean showCaptureLimits = false;
     /** Where the site's logo (the BMC button's picture) comes from. */
     public String logoUrl = "https://bmcmc.online/favicon.ico";
 

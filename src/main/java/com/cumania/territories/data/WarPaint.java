@@ -12,7 +12,8 @@ public final class WarPaint {
     private WarPaint() {}
 
     /** countryRgb[country] is RGB or -1 (greyed); provinceRgb overrides single provinces. */
-    public record Paint(int[] countryRgb, Map<Integer, Integer> provinceRgb, Map<Integer, int[]> provinceBounds) {}
+    /** zoneRgb: the colour of each capture limit (by "name(country)" in lower case) that a war's view paints by who holds the city. */
+    public record Paint(int[] countryRgb, Map<Integer, Integer> provinceRgb, Map<Integer, int[]> provinceBounds, Map<String, Integer> zoneRgb) {}
 
     public static final int NEUTRAL = 0x6E6E6E, CONTESTED = 0xE0C040, UNCONTROLLED = 0x9A9A9A;
     private static final int[] SIDE_COLORS = {0xD83A3A, 0x3A6FD8, 0x3AAE5A, 0xE59A2E, 0x8E5AC8, 0x2AAFAF};
@@ -33,6 +34,7 @@ public final class WarPaint {
         java.util.List<int[]> boxes = new java.util.ArrayList<>();
         addProvinceBoxes(old, next, boxes);
         addProvinceBoxes(next, old, boxes);
+        if (com.cumania.territories.TerritoryManager.config().showCaptureLimits) boxes.addAll(index.limits().boxesOf(changedZones(old, next)));
         com.cumania.territories.TerritoryManager.repaintRegions(index.regionsTouching(changed, boxes));
     }
 
@@ -41,6 +43,15 @@ public final class WarPaint {
         if (p == null) return -2;
         int rgb = country < p.countryRgb().length ? p.countryRgb()[country] : -1;
         return rgb < 0 && !com.cumania.territories.TerritoryManager.config().warGreyOthers ? -2 : rgb;
+    }
+
+    /** Capture limits whose colour differs between two paints (a limit has its colour in one and none in the other counts too). */
+    private static java.util.Set<String> changedZones(Paint a, Paint b) {
+        java.util.Set<String> out = new java.util.HashSet<>();
+        Map<String, Integer> za = a == null ? Map.of() : a.zoneRgb(), zb = b == null ? Map.of() : b.zoneRgb();
+        for (Map.Entry<String, Integer> e : za.entrySet()) if (!e.getValue().equals(zb.get(e.getKey()))) out.add(e.getKey());
+        for (Map.Entry<String, Integer> e : zb.entrySet()) if (!e.getValue().equals(za.get(e.getKey()))) out.add(e.getKey());
+        return out;
     }
 
     /** Provinces painted in `a` whose colour differs in `b`. */
@@ -87,7 +98,16 @@ public final class WarPaint {
             provinces.put(province, color);
             bounds.put(province, index.provinceBoundsOf(province));
         }
-        return new Paint(rgb, provinces, bounds);
+        // the capture limits take the colour of whoever holds their city (the cities of every side, as live control paints them)
+        Map<String, Integer> zones = new HashMap<>();
+        if (!index.limits().isEmpty()) {
+            for (WarScore.Holding h : WarScore.of(index, war).holdings()) {
+                Integer color = "contested".equals(h.state()) ? Integer.valueOf(CONTESTED) : "uncontrolled".equals(h.state()) ? Integer.valueOf(UNCONTROLLED)
+                        : h.holder() >= 0 && h.holder() < sides.size() ? Integer.valueOf(sideColor(sides.get(h.holder()), h.holder())) : null;
+                if (color != null) zones.put(WarScore.key(h.locality().name, h.locality().country), color);
+            }
+        }
+        return new Paint(rgb, provinces, bounds, zones);
     }
 
     public static Paint forAlliance(TerritoryIndex index, TerritoryFile.AllianceInfo alliance) {
@@ -98,7 +118,7 @@ public final class WarPaint {
             if (m.countries == null) continue;
             for (String c : m.countries) { int ci = index.countryIndex(c); if (ci >= 0) rgb[ci] = color; }
         }
-        return new Paint(rgb, Map.of(), Map.of());
+        return new Paint(rgb, Map.of(), Map.of(), Map.of());
     }
 
     private static int[] blank(TerritoryIndex index) {

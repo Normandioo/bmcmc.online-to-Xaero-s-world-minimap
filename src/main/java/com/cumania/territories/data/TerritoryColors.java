@@ -31,7 +31,10 @@ public final class TerritoryColors {
      * @return false when the chunk has no territory at all
      */
     public static boolean compute(TerritoryIndex index, int chunkX, int chunkZ, int fillAlpha, int borderAlpha, int[] out) {
-        if (!index.chunkHasTerritory(chunkX, chunkZ)) return false;
+        boolean territory = index.chunkHasTerritory(chunkX, chunkZ);
+        short[] limit = limitsOn() ? index.limits().chunk(chunkX, chunkZ) : null;
+        if (!territory && limit == null) return false;
+        if (!territory) { java.util.Arrays.fill(out, 0, 256, 0); return overlayLimits(index, limit, out); }
         WarPaint.Paint paint = WarPaint.current();
         boolean greyOthers = com.cumania.territories.TerritoryManager.config().warGreyOthers;
         int baseX = chunkX << 4, baseZ = chunkZ << 4;
@@ -57,6 +60,33 @@ public final class TerritoryColors {
                         || index.countryAtBlock(bx, bz + 1) != country || index.countryAtBlock(bx - 1, bz) != country;
                 out[(z << 4) | x] = pack(rgb, edge ? borderA : fillA);
             }
+        }
+        return limit == null || overlayLimits(index, limit, out);
+    }
+
+    // ---- the site's capture limits ----
+
+    private static final int LIMIT_RGB = 0xFFFFFF, LIMIT_ALPHA = 170, LIMIT_WAR_ALPHA = 225;
+
+    private static boolean limitsOn() { return com.cumania.territories.TerritoryManager.config().showCaptureLimits; }
+
+    /** Whether the chunk has anything for the map to paint: territory, or (with capture limits on) a limit's outline. */
+    public static boolean chunkHasAnything(TerritoryIndex index, int cx, int cz) {
+        return index.chunkHasTerritory(cx, cz) || (limitsOn() && index.limits().chunkHas(cx, cz));
+    }
+
+    public static boolean regionHasAnything(TerritoryIndex index, int rx, int rz) {
+        return index.regionHasTerritory(rx, rz) || (limitsOn() && index.limits().regionHas(rx, rz));
+    }
+
+    /** Dashes on the outline blocks: white, or in a war's view the colour of whoever holds that city (yellow contested, grey uncontrolled). */
+    private static boolean overlayLimits(TerritoryIndex index, short[] limit, int[] out) {
+        WarPaint.Paint paint = WarPaint.current();
+        for (int i = 0; i < 256; i++) {
+            int z = limit[i];
+            if (z == 0) continue;
+            Integer war = paint == null ? null : paint.zoneRgb().get(index.limits().zone(z - 1).key());
+            out[i] = war != null ? pack(war, LIMIT_WAR_ALPHA) : pack(LIMIT_RGB, LIMIT_ALPHA);
         }
         return true;
     }

@@ -26,12 +26,12 @@ public final class WorldMapTerritoryHighlighter extends AbstractHighlighter {
 
     @Override
     public boolean regionHasHighlights(ResourceKey<Level> dimension, int regionX, int regionZ) {
-        return applies(dimension) && TerritoryManager.index().regionHasTerritory(regionX, regionZ);
+        return applies(dimension) && TerritoryColors.regionHasAnything(TerritoryManager.index(), regionX, regionZ);
     }
 
     @Override
     public boolean chunkIsHighlit(ResourceKey<Level> dimension, int chunkX, int chunkZ) {
-        return applies(dimension) && TerritoryManager.index().chunkHasTerritory(chunkX, chunkZ);
+        return applies(dimension) && TerritoryColors.chunkHasAnything(TerritoryManager.index(), chunkX, chunkZ);
     }
 
     @Override

@@ -20,6 +20,16 @@ public final class TerritoryFile {
     public Map<String, Player> players;
     /** Optional (mod 1.4+): wars, alliances and diplomatic timers, as the site works them out. */
     public WarData war;
+    /**
+     * Optional (site's capture limits, gaia/capture.svg): the land a side must hold to take a city, where it differs from the province.
+     * name and country match the localities; rings are even-odd, x0,z0,x1,z1,... in blocks (read as numbers so a decimal can not spoil the file).
+     */
+    public List<Zone> zones;
+
+    public static final class Zone {
+        public String name, country;
+        public List<double[]> rings;
+    }
 
     public static final class WarData {
         public List<WarInfo> wars;

@@ -160,3 +160,12 @@ O mod passa a ler o dynmap do servidor pelo mesmo endereço que o site usa (`htt
 - **Roda do mouse:** com o mouse sobre o menu de guerra, a roda rola o menu em vez de dar zoom no mapa (os botões Up/Down continuam).
 - **Barra "Who is winning" por pontos:** cada cidade vale pontos pela regra do site (Lei 7.9: 150 pontos por reino, divididos entre os tipos Small/Medium/Large que ele tem e, dentro de cada tipo, igualmente entre as cidades; reino sem assentamentos vale 150 pela capital). A barra mostra a % de pontos que cada lado segura agora (as próprias cidades que não foram tomadas, mais as que tomou). O mod não tem o mapa de regiões do site, então o reino é o país da cidade (ou o nome do membro, como "Eleyetia" para USE e Mesea).
 - **Aviso no chat:** quando uma cidade é capturada, retomada ou fica contestada numa guerra, o mod escreve no chat, por exemplo `[Lombrigan War] Okeham (Greneshire) was captured by Defenders`. Funciona com o mapa fechado: enquanto há uma guerra `live`, o mod lê os marcadores do dynmap em segundo plano a cada 20 s. A primeira leitura só define o ponto de partida (entrar no jogo não anuncia o que já foi tomado), e mais de 5 mudanças de uma vez viram uma linha só. Liga/desliga em **Chat alerts for captures** no menu BMC (`chatAlerts`).
+
+## 1.9.0: limites de captura no mapa
+
+O site passou a ter **limites de captura** (`gaia/capture.svg`): a área que um lado precisa ocupar para tomar uma cidade, quando ela é diferente da província. O `territories.json` ganhou a chave `zones` (uma por cidade com limite desenhado; `name` e `country` casam com as localidades, e os `rings` seguem a regra par-ímpar como os de `provinces`). O plugin de servidor BmcWar conta exatamente essa área.
+
+- **Contorno tracejado no mapa:** no mapa grande e no minimapa do Xaero's, branco e semitransparente. Fica **desligado por padrão**: ligue em **Capture limits** no menu BMC (`showCaptureLimits` no config).
+- **Em guerra:** no painel da guerra, o contorno de cada cidade usa a cor do lado que a segura agora (amarelo = contestada, cinza = sem dono), seguindo o que o dynmap diz numa guerra ao vivo. As cidades de fora da guerra continuam brancas.
+- **Compatibilidade:** arquivos sem `zones` funcionam como antes. Coordenadas decimais nas zonas não quebram a leitura.
+- O contorno é de 1 bloco, como as bordas dos países, e os traços são de 8 blocos com 5 de intervalo; com muito zoom out viram pontilhado.
