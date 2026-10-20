@@ -30,12 +30,12 @@ public final class WarEffects {
         boolean viewing = com.cumania.territories.data.WarPaint.current() != null;
         if (!TerritoryManager.active() || mc.player == null || !(config.showSwords || config.showFlags || viewing)) { WarMarkers.clear(); return; }
         var index = TerritoryManager.index();
-        var war = WarMarkers.followed(index);
+        var war = WarMarkers.followed(index, com.cumania.territories.compat.WarMenu.viewedWarId());
         if (war == null) { WarMarkers.clear(); return; }
         if (war.live && config.liveWar) {
             DynmapClient.wantMarkersInBackground();
-            if (config.showSwords) DynmapClient.wantPlayers();
         }
+        if (config.showSwords) DynmapClient.wantPlayers();
         if (war.live && !LiveControl.isLive(war)) return;   // dynmap has not answered yet: only the site's last list is known
         List<DynmapClient.Online> players = config.showSwords && DynmapClient.playersKnown() ? DynmapClient.players() : List.of();
         WarMarkers.update(index, war, players, config.dynmapWorld, System.currentTimeMillis());

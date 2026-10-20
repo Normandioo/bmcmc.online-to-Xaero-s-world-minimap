@@ -43,6 +43,9 @@ public final class WarMenu {
     private static int tab, scroll;
     private static String warId, allianceId;
 
+    /** The id of the war being viewed on the map, or null. */
+    public static String viewedWarId() { return warId; }
+
     /**
      * One row of the body. heading = a section title (taller, with a bar), spacer = empty space, swatch >= 0 draws a colour square first,
      * fold = a header that opens and closes the rows below it, tail = small text at the right edge, indent = pixels in from the left.
