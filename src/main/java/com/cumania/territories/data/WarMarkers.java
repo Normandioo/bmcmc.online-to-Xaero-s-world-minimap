@@ -36,10 +36,11 @@ public final class WarMarkers {
         try { return Instant.parse(war.ended).isAfter(Instant.now()); } catch (RuntimeException e) { return false; }
     }
 
-    /** The war the effects follow: the first one running (a live one first). */
-    public static TerritoryFile.WarInfo followed(TerritoryIndex index) {
+    /** The war the effects follow: the one being viewed, else the first one running (a live one first). */
+    public static TerritoryFile.WarInfo followed(TerritoryIndex index, String viewedId) {
         var wars = index.war().wars;
         if (wars == null) return null;
+        if (viewedId != null) for (var w : wars) if (w != null && viewedId.equals(w.id) && w.sides != null) return w;   // the war on screen comes first
         TerritoryFile.WarInfo first = null;
         for (var w : wars) {
             if (w == null || w.id == null || w.sides == null || !running(w)) continue;
