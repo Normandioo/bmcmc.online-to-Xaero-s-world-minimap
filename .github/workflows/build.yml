@@ -40,7 +40,7 @@ jobs:
           ./gradlew build --no-daemon > build.log 2>&1
           code=$?
           if [ $code -ne 0 ]; then
-            echo "::error title=Gradle failed::$(grep -E 'error:|Could not|What went wrong|FAILED|not found|cannot find' -A3 build.log | head -40 | sed ':a;N;$!ba;s/\n/%0A/g')"
+            echo "::error title=Gradle failed::$(grep -E 'error:|What went wrong' -A2 build.log | grep -v '^--' | cut -c1-230 | sed 's#.*territories/##' | head -400 | sed ':a;N;$!ba;s/\n/%0A/g')"
           fi
           cat build.log
           exit $code
