@@ -185,7 +185,7 @@ public final class WarMenu {
     }
 
     private static void goTo(int x, int z) {
-        if (Minecraft.getInstance().screen instanceof CameraTarget camera) camera.cumania$goTo(x, z, TerritoryManager.config().goToZoom);
+        if (Minecraft.getInstance().gui.screen() instanceof CameraTarget camera) camera.cumania$goTo(x, z, TerritoryManager.config().goToZoom);
     }
 
     // ---------------------------------------------------------------- time helpers
