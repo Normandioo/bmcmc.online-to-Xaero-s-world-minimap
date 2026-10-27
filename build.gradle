@@ -33,8 +33,7 @@ if (oldXaero) {
         }
     }
     sourceSets.main.java.setSrcDirs([gen])
-    tasks.named('compileJava') { dependsOn 'swapXaeroBuffer' }
-    tasks.named('sourcesJar') { dependsOn 'swapXaeroBuffer' }
+    tasks.matching { it.name == 'compileJava' || it.name == 'sourcesJar' }.configureEach { dependsOn 'swapXaeroBuffer' }
 }
 
 processResources {
