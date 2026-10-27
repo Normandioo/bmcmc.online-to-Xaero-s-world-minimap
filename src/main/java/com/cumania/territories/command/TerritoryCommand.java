@@ -1,7 +1,7 @@
 package com.cumania.territories.command;
 
 import com.cumania.territories.TerritoryManager;
-import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.minecraft.network.chat.Component;
 
@@ -11,20 +11,20 @@ public final class TerritoryCommand {
 
     public static void register() {
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> dispatcher.register(
-                ClientCommandManager.literal("territories")
+                ClientCommands.literal("territories")
                         .executes(ctx -> toggle(ctx.getSource()))
-                        .then(ClientCommandManager.literal("toggle").executes(ctx -> toggle(ctx.getSource())))
-                        .then(ClientCommandManager.literal("reload").executes(ctx -> {
+                        .then(ClientCommands.literal("toggle").executes(ctx -> toggle(ctx.getSource())))
+                        .then(ClientCommands.literal("reload").executes(ctx -> {
                             TerritoryManager.reload();
                             ctx.getSource().sendFeedback(Component.literal("Updating territories from the site..."));
                             return 1;
                         }))
-                        .then(ClientCommandManager.literal("war").executes(ctx -> {
+                        .then(ClientCommands.literal("war").executes(ctx -> {
                             com.cumania.territories.compat.WarMenu.toggle();
                             ctx.getSource().sendFeedback(Component.literal("War menu toggled (it shows on Xaero's World Map)"));
                             return 1;
                         }))
-                        .then(ClientCommandManager.literal("status").executes(ctx -> {
+                        .then(ClientCommands.literal("status").executes(ctx -> {
                             var index = TerritoryManager.index();
                             ctx.getSource().sendFeedback(Component.literal(
                                     (TerritoryManager.config().enabled ? "Showing " : "Hidden: ")

@@ -5,7 +5,7 @@ import com.cumania.territories.data.DynmapClient;
 import com.cumania.territories.data.FaceCache;
 import com.cumania.territories.data.FlagCache;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.MultiBufferSource;
+import xaero.lib.client.graphics.XaeroBufferProvider;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
 import xaero.map.element.MapElementGraphics;
@@ -134,18 +134,18 @@ public final class PlayerRenderer extends ElementRenderer<DynmapClient.Online, P
         @Override public boolean isInteractable(ElementRenderLocation location, DynmapClient.Online p) { return true; }
     }
 
-    @Override public void preRender(ElementRenderInfo info, MultiBufferSource.BufferSource buffers, MultiTextureRenderTypeRendererProvider providers, boolean shadow) {
+    @Override public void preRender(ElementRenderInfo info, XaeroBufferProvider buffers, MultiTextureRenderTypeRendererProvider providers, boolean shadow) {
         context.dimension = info.mapDimension;
         context.scale = info.scale;
     }
 
-    @Override public void postRender(ElementRenderInfo info, MultiBufferSource.BufferSource buffers, MultiTextureRenderTypeRendererProvider providers, boolean shadow) {}
+    @Override public void postRender(ElementRenderInfo info, XaeroBufferProvider buffers, MultiTextureRenderTypeRendererProvider providers, boolean shadow) {}
 
     @Override public void renderElementShadow(DynmapClient.Online p, boolean hovered, float optionalScale, double partialX, double partialY, ElementRenderInfo info,
-                                              MapElementGraphics graphics, MultiBufferSource.BufferSource buffers, MultiTextureRenderTypeRendererProvider providers) {}
+                                              MapElementGraphics graphics, XaeroBufferProvider buffers, MultiTextureRenderTypeRendererProvider providers) {}
 
     @Override public boolean renderElement(DynmapClient.Online p, boolean hovered, double optionalDepth, float optionalScale, double partialX, double partialY, ElementRenderInfo info,
-                                           MapElementGraphics graphics, MultiBufferSource.BufferSource buffers, MultiTextureRenderTypeRendererProvider providers) {
+                                           MapElementGraphics graphics, XaeroBufferProvider buffers, MultiTextureRenderTypeRendererProvider providers) {
         int half = head() / 2;
         graphics.fill(-half - 1, -half - 1, half + 1, half + 1, hovered ? 0xFFFFD400 : 0xFFFFFFFF);   // the ring, as on the site
         int[] face = FaceCache.get(DynmapClient.faceUrl(p.account()));

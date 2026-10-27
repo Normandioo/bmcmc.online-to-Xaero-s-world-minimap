@@ -7,7 +7,7 @@ import com.cumania.territories.data.TerritoryIndex;
 import com.cumania.territories.data.WarFront;
 import com.cumania.territories.data.WarPaint;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.MultiBufferSource;
+import xaero.lib.client.graphics.XaeroBufferProvider;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
 import xaero.map.element.MapElementGraphics;
@@ -110,18 +110,18 @@ public final class LocalityRenderer extends ElementRenderer<TerritoryFile.Locali
 
     // ---- renderer ----
 
-    @Override public void preRender(ElementRenderInfo info, MultiBufferSource.BufferSource buffers, MultiTextureRenderTypeRendererProvider providers, boolean shadow) {
+    @Override public void preRender(ElementRenderInfo info, XaeroBufferProvider buffers, MultiTextureRenderTypeRendererProvider providers, boolean shadow) {
         context.dimension = info.mapDimension;
         context.scale = info.scale;
     }
 
-    @Override public void postRender(ElementRenderInfo info, MultiBufferSource.BufferSource buffers, MultiTextureRenderTypeRendererProvider providers, boolean shadow) {}
+    @Override public void postRender(ElementRenderInfo info, XaeroBufferProvider buffers, MultiTextureRenderTypeRendererProvider providers, boolean shadow) {}
 
     @Override public void renderElementShadow(TerritoryFile.Locality l, boolean hovered, float optionalScale, double partialX, double partialY, ElementRenderInfo info,
-                                              MapElementGraphics graphics, MultiBufferSource.BufferSource buffers, MultiTextureRenderTypeRendererProvider providers) {}
+                                              MapElementGraphics graphics, XaeroBufferProvider buffers, MultiTextureRenderTypeRendererProvider providers) {}
 
     @Override public boolean renderElement(TerritoryFile.Locality l, boolean hovered, double optionalDepth, float optionalScale, double partialX, double partialY, ElementRenderInfo info,
-                                           MapElementGraphics graphics, MultiBufferSource.BufferSource buffers, MultiTextureRenderTypeRendererProvider providers) {
+                                           MapElementGraphics graphics, XaeroBufferProvider buffers, MultiTextureRenderTypeRendererProvider providers) {
         TerritoryIndex index = TerritoryManager.index();
         int rank = rank(l);
         var config = TerritoryManager.config();
