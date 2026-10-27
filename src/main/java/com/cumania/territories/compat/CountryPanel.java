@@ -101,7 +101,7 @@ public final class CountryPanel {
     private static boolean goTo(int mx, int my) {
         for (GoHit hit : goHits) {
             if (mx >= hit.x0 && mx < hit.x1 && my >= hit.y0 && my < hit.y1) {
-                if (Minecraft.getInstance().gui.screen() instanceof CameraTarget camera) camera.cumania$goTo(hit.target.x, hit.target.z, TerritoryManager.config().goToZoom);
+                if (Screens.current() instanceof CameraTarget camera) camera.cumania$goTo(hit.target.x, hit.target.z, TerritoryManager.config().goToZoom);
                 return true;
             }
         }

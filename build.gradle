@@ -4,7 +4,7 @@ plugins {
 
 version = project.mod_version
 group = 'com.cumania'
-base { archivesName = 'cumania-territories' }
+base { archivesName = 'cumania-territories-mc' + project.minecraft_version }
 
 repositories {
     // Xaero's World Map and Minimap are compiled against from ./libs (put their jars there), so no repository is needed
@@ -19,9 +19,28 @@ dependencies {
     compileOnly fileTree(dir: 'libs', include: '*.jar')
 }
 
+// Xaero's 26.1 builds still use Minecraft's MultiBufferSource in their renderer API; 26.2 and later use their own XaeroBufferProvider.
+// The sources are written for the new one; for 26.1 they are copied with that one type swapped.
+def oldXaero = project.hasProperty('old_xaero') && project.property('old_xaero') == 'true'
+if (oldXaero) {
+    def gen = layout.buildDirectory.dir('generated-src')
+    tasks.register('swapXaeroBuffer', Copy) {
+        from('src/main/java')
+        into(gen)
+        filter { String line ->
+            line.replace('import xaero.lib.client.graphics.XaeroBufferProvider;', 'import net.minecraft.client.renderer.MultiBufferSource;')
+                .replace('XaeroBufferProvider', 'MultiBufferSource.BufferSource')
+        }
+    }
+    sourceSets.main.java.setSrcDirs([gen])
+    tasks.named('compileJava') { dependsOn 'swapXaeroBuffer' }
+    tasks.named('sourcesJar') { dependsOn 'swapXaeroBuffer' }
+}
+
 processResources {
     inputs.property 'version', project.version
-    filesMatching('fabric.mod.json') { expand 'version': project.version }
+    inputs.property 'mc_range', project.mc_range
+    filesMatching('fabric.mod.json') { expand 'version': project.version, 'mc_range': project.mc_range }
 }
 
 tasks.withType(JavaCompile).configureEach {
