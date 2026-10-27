@@ -4,7 +4,7 @@ name: Build
 
 on:
   push:
-    branches: [claude/dev, main]
+    branches: [claude/dev, claude/mc-26.2, main]
     tags: ['v*']
   pull_request:
   workflow_dispatch:
@@ -18,7 +18,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 21
+          java-version: 25
       - uses: gradle/actions/setup-gradle@v4
       # The mod is compiled against Xaero's World Map and Minimap (they are not part of the repository and are not put in the jar):
       # the newest Fabric build of each for the Minecraft version in gradle.properties, from Modrinth.
