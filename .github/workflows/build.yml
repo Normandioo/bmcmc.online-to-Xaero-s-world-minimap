@@ -54,15 +54,10 @@ jobs:
           fj=$(find ~/.gradle -name 'fabric-screen-api-v1*.jar' | head -1)
           cj=$(find ~/.gradle -name 'fabric-command-api-v2*.jar' | head -1)
           note() { echo "::notice title=Probe $1::$(head -c 3500 /tmp/p.txt | cut -c1-220 | sed ':a;N;$!ba;s/\n/%0A/g')"; }
-          javap -p -cp "$mj" net.minecraft.client.gui.GuiGraphicsExtractor 2>&1 | grep -E 'fill|text|String|item|blit|pose|Pose|scissor' | grep public > /tmp/p.txt; note GFX
-          javap -p -cp /tmp/xwm xaero.map.element.MapElementGraphics 2>&1 | grep public > /tmp/p.txt; note MEG
-          javap -p -cp /tmp/xwm xaero.map.gui.GuiMap 2>&1 | grep -iE 'mouse|click|drag' | grep -v 'private int\|private double\|private long' > /tmp/p.txt; note MAP
-          javap -p -cp "$mj" net.minecraft.client.gui.screens.Screen 2>&1 | grep -iE 'mouse|click|drag' > /tmp/p.txt; note SCREEN
-          javap -p -cp "$fj" net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents 2>&1 > /tmp/p.txt; note SME
-          javap -p -cp "$fj" 'net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents$AllowMouseClick' 2>&1 > /tmp/p.txt; note SMEclick
-          javap -p -cp "$mj" net.minecraft.client.MouseHandler 2>&1 | grep -iE 'Pressed|public' | head -30 > /tmp/p.txt; note MH
-          javap -p -cp "$cj" net.fabricmc.fabric.api.client.command.v2.ClientCommands 2>&1 > /tmp/p.txt; note CMD
-          javap -p -cp /tmp/xwm xaero.map.element.render.ElementRenderer 2>&1 | grep -E 'abstract' | sed 's/xaero\.map\.element\.render\.//g;s/xaero\.map\.graphics\.renderer\.multitexture\.//g;s/xaero\.map\.element\.//g' > /tmp/p.txt; note ER
+          javap -p -cp "$mj" net.minecraft.client.Minecraft 2>&1 | grep -iE 'screen|gui' | grep -E 'public' > /tmp/p.txt; note MC
+          javap -p -cp "$fj" net.fabricmc.fabric.api.client.screen.v1.ScreenEvents 2>&1 | grep public | sed 's/net.fabricmc.fabric.api.client.screen.v1.//g;s/net.fabricmc.fabric.api.event.//g' > /tmp/p.txt; note SE
+          javap -p -cp "$fj" 'net.fabricmc.fabric.api.client.screen.v1.ScreenEvents$AfterRender' 'net.fabricmc.fabric.api.client.screen.v1.ScreenEvents$AfterExtract' 2>&1 | grep -E 'abstract|interface' > /tmp/p.txt; note SEA
+          javap -p -cp "$mj" net.minecraft.client.gui.Gui 2>&1 | grep -iE 'screen' | grep public > /tmp/p.txt; note GUI
       - uses: actions/upload-artifact@v4
         with:
           name: cumania-territories
