@@ -48,19 +48,20 @@ jobs:
         if: always()
         shell: bash
         run: |
-          mc=$(find ~/.gradle -name 'minecraft*client*.jar' -o -name 'minecraft-merged*.jar' -o -name 'minecraft-clientOnly*.jar' 2>/dev/null | head -3)
-          echo "JARS: $mc"
-          {
-            for j in $mc; do unzip -l "$j" | awk '{print $4}' | grep -E 'GuiGraphics|MultiBufferSource|client/gui/screens/Screen.class|input/MouseButtonEvent|KeyboardHandler|MouseHandler|renderer/MultiBuffer|client/Minecraft.class' ; done
-            f=$(find ~/.gradle -name 'fabric-command-api-v2*.jar' | head -2); echo "CMD: $f"
-            for j in $f; do unzip -l "$j" | awk '{print $4}' | grep -i 'ClientCommand'; done
-            for p in libs/xaeros-world-map.jar; do
-              mkdir -p /tmp/xwm && cd /tmp/xwm && unzip -qo "$OLDPWD/$p" && cd - >/dev/null
-              javap -p -cp /tmp/xwm xaero.map.element.render.ElementRenderer xaero.map.element.MapElementGraphics | cut -c1-260
-              javap -p -cp /tmp/xwm xaero.map.gui.GuiMap | grep -i 'mouse\|click' | cut -c1-200
-            done
-          } > probe.txt 2>&1
-          echo "::notice title=Probe::$(head -c 20000 probe.txt | sed ':a;N;$!ba;s/\n/%0A/g')"
+          mkdir -p /tmp/xwm && (cd /tmp/xwm && unzip -qo "$GITHUB_WORKSPACE/libs/xaeros-world-map.jar")
+          mj=$(find ~/.gradle -name 'minecraft-*.jar' -path '*loom*' | grep -v sources | head -1)
+          fj=$(find ~/.gradle -name 'fabric-screen-api-v1*.jar' | head -1)
+          cj=$(find ~/.gradle -name 'fabric-command-api-v2*.jar' | head -1)
+          note() { echo "::notice title=Probe $1::$(head -c 3500 /tmp/p.txt | cut -c1-220 | sed ':a;N;$!ba;s/\n/%0A/g')"; }
+          javap -p -cp "$mj" net.minecraft.client.gui.GuiGraphicsExtractor 2>&1 | grep -E 'fill|text|String|item|blit|pose|Pose|scissor' | grep public > /tmp/p.txt; note GFX
+          javap -p -cp /tmp/xwm xaero.map.element.MapElementGraphics 2>&1 | grep public > /tmp/p.txt; note MEG
+          javap -p -cp /tmp/xwm xaero.map.gui.GuiMap 2>&1 | grep -iE 'mouse|click|drag' | grep -v 'private int\|private double\|private long' > /tmp/p.txt; note MAP
+          javap -p -cp "$mj" net.minecraft.client.gui.screens.Screen 2>&1 | grep -iE 'mouse|click|drag' > /tmp/p.txt; note SCREEN
+          javap -p -cp "$fj" net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents 2>&1 > /tmp/p.txt; note SME
+          javap -p -cp "$fj" 'net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents$AllowMouseClick' 2>&1 > /tmp/p.txt; note SMEclick
+          javap -p -cp "$mj" net.minecraft.client.MouseHandler 2>&1 | grep -iE 'Pressed|public' | head -30 > /tmp/p.txt; note MH
+          javap -p -cp "$cj" net.fabricmc.fabric.api.client.command.v2.ClientCommands 2>&1 > /tmp/p.txt; note CMD
+          javap -p -cp /tmp/xwm xaero.map.element.render.ElementRenderer 2>&1 | grep -E 'abstract' | sed 's/xaero\.map\.element\.render\.//g;s/xaero\.map\.graphics\.renderer\.multitexture\.//g;s/xaero\.map\.element\.//g' > /tmp/p.txt; note ER
       - uses: actions/upload-artifact@v4
         with:
           name: cumania-territories
