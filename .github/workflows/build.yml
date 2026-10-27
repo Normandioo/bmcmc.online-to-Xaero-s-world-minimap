@@ -45,20 +45,6 @@ jobs:
           fi
           cat build.log
           exit $code
-      - name: Probe (temporary)
-        if: always()
-        shell: bash
-        run: |
-          mkdir -p /tmp/xwm && (cd /tmp/xwm && unzip -qo "$GITHUB_WORKSPACE/libs/xaeros-world-map.jar")
-          mj=$(find ~/.gradle -name 'minecraft-*.jar' -path '*loom*' | grep -v sources | head -1)
-          fj=$(find ~/.gradle -name 'fabric-screen-api-v1*.jar' | head -1)
-          cj=$(find ~/.gradle -name 'fabric-command-api-v2*.jar' | head -1)
-          note() { echo "::notice title=Probe $1::$(head -c 3500 /tmp/p.txt | cut -c1-220 | sed ':a;N;$!ba;s/\n/%0A/g')"; }
-          javap -p -cp /tmp/xwm xaero.map.gui.GuiMap 2>&1 | grep -E ' (cameraDestination|destScale|mouseBlockPosX|mouseBlockPosZ|viewedOnMousePress|mapClicked)' > /tmp/p.txt; note SHADOWS
-          javap -p -cp /tmp/xwm xaero.map.highlight.HighlighterRegistry 2>&1 | grep -E 'end|register' > /tmp/p.txt; note WMREG
-          mkdir -p /tmp/xmm && (cd /tmp/xmm && unzip -qo "$GITHUB_WORKSPACE/libs/xaeros-minimap.jar")
-          javap -p -cp /tmp/xmm xaero.common.minimap.highlight.HighlighterRegistry 2>&1 | grep -E 'end|register|Compiled' > /tmp/p.txt; note MMREG
-          unzip -l libs/*.jar | grep -E 'mixins.json|fabric.mod.json' | head > /tmp/p.txt; note JSONS
       - uses: actions/upload-artifact@v4
         with:
           name: cumania-territories
@@ -102,7 +88,7 @@ jobs:
   # (gradle.properties) has no release yet: it then creates the tag itself. Notes: .github/release-notes/vX.Y.Z.md when it exists.
   release:
     name: Release
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/claude/mc-26.2' || startsWith(github.ref, 'refs/tags/v'))
     needs: [mod, plugin]
     runs-on: ubuntu-latest
     permissions:
