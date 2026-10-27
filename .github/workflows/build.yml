@@ -31,6 +31,7 @@ jobs:
               | python3 -c "import json,sys; v=json.load(sys.stdin); print(v[0]['files'][0]['url'])")
             echo "$project: $url"
             curl -fsSL -o "libs/$project.jar" "$url"
+            unzip -j -o -q "libs/$project.jar" "META-INF/jars/*.jar" -d libs || true   # Xaero's library, bundled inside
           done
       - run: chmod +x gradlew
       - name: Build
