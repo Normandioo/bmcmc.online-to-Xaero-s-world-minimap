@@ -312,6 +312,21 @@ public final class TerritoryIndex {
     public int countryOfProvince(int province) { return countryOfProvince[province]; }
     public boolean isEmpty() { return width == 0; }
     public int provinceCount() { return provinceLabels.length; }
+    private volatile java.util.Set<String> landless;
+    /** True for a nation that has cities but no land on the map (an event's): its cities belong to the war view, not to the normal map. */
+    public boolean landless(String country) {
+        java.util.Set<String> set = landless;
+        if (set == null) {
+            set = new java.util.HashSet<>();
+            for (TerritoryFile.Locality l : localities) {
+                if (l.country == null || set.contains(l.country)) continue;
+                int c = countryIndex(l.country);
+                if (c < 0 || !countryHasLand(c)) set.add(l.country);
+            }
+            landless = set;
+        }
+        return set.contains(country);
+    }
     /** Whether the country has any province on the map (an event's nations have cities but no land). */
     public boolean countryHasLand(int country) {
         for (int p = 0; p < countryOfProvince.length; p++) if (countryOfProvince[p] == country) return true;
