@@ -312,5 +312,10 @@ public final class TerritoryIndex {
     public int countryOfProvince(int province) { return countryOfProvince[province]; }
     public boolean isEmpty() { return width == 0; }
     public int provinceCount() { return provinceLabels.length; }
+    /** Whether the country has any province on the map (an event's nations have cities but no land). */
+    public boolean countryHasLand(int country) {
+        for (int p = 0; p < countryOfProvince.length; p++) if (countryOfProvince[p] == country) return true;
+        return false;
+    }
     public int countryCount() { return countryIds.length; }
 }
