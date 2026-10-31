@@ -114,7 +114,7 @@ public final class TerritoryManager {
     public static void onJoin() {
         String ip = currentServer();
         String key = ip == null ? null : config.serverMaps.get(ip);
-        if (key != null) chooseMap(key, false);
+        chooseMap(key != null ? key : "gaia", false);   // a server you never picked a map for is Gaia's, not whatever was chosen on the last one
     }
 
     private static String currentServer() {
