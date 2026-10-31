@@ -23,6 +23,7 @@ public final class CumaniaTerritories implements ClientModInitializer {
         if (worldMapLoaded) com.cumania.territories.compat.WorldMapScreenHooks.register();
         // Pick up changes the site published since last time whenever you join a world
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
+            TerritoryManager.onJoin();
             TerritoryManager.reload();
             if (worldMapLoaded) {
                 com.cumania.territories.compat.CountryPanel.clear();

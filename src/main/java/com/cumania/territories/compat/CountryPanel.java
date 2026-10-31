@@ -156,7 +156,7 @@ public final class CountryPanel {
         FlagCache.Flag flag = null;
         if (c >= 0 && TerritoryManager.index().countryData(c).info != null) {
             String rel = TerritoryManager.index().countryData(c).info.get("flag");
-            String url = TerritoryManager.config().url;
+            String url = TerritoryManager.mapUrl();
             if (rel != null && !rel.isBlank() && url != null && url.contains("/")) flag = FlagCache.get(url.substring(0, url.lastIndexOf('/') + 1) + rel);
         }
 
@@ -354,7 +354,7 @@ public final class CountryPanel {
         } else rows.add(new Block("", PanelModel.wrap("No record of this player on the site.", innerW, font::width)));
 
         SkinCache.Figure figure = null;
-        String url = TerritoryManager.config().url;
+        String url = TerritoryManager.mapUrl();
         if (p != null && p.skin != null && !p.skin.isBlank() && url != null && url.contains("/")) figure = SkinCache.get(url.substring(0, url.lastIndexOf('/') + 1) + p.skin);
         int scale = figure == null ? 0 : 3;
         int linkH = LINE + 8;

@@ -89,7 +89,7 @@ public final class SettingsMenu {
         if (!open) { panelH = 0; return; }
 
         // rows
-        int rowCount = page == 1 ? 8 : 10;
+        int rowCount = page == 1 ? 8 : 11;
         panelH = HEADER_H + 7 + rowCount * ROW + 14;
         panelH = Math.min(panelH, screenH - TOP - 6);
         int anchor = page == 1 ? btn2X : btnX;
@@ -115,6 +115,7 @@ public final class SettingsMenu {
             y = toggle(g, font, x0, y, "Grey out others in wars", c.warGreyOthers, () -> { c.warGreyOthers = !c.warGreyOthers; changed(true); });
             y = toggle(g, font, x0, y, "Live war control", c.liveWar, () -> { c.liveWar = !c.liveWar; changed(false); WarMenu.liveChanged(); });
         } else {
+            y = choice(g, font, x0, y, "Map", TerritoryManager.mapName(), TerritoryManager::nextMap);
             y = stepper(g, font, x0, y, "Territory colour", c.fillAlpha, v -> c.fillAlpha = v);
             y = stepper(g, font, x0, y, "Borders", c.borderAlpha, v -> c.borderAlpha = v);
             y = toggle(g, font, x0, y, "Show territories", c.enabled, () -> { TerritoryManager.toggle(); });
