@@ -38,6 +38,6 @@ public final class WarEffects {
         if (config.showSwords) DynmapClient.wantPlayers();
         if (war.live && !LiveControl.isLive(war)) return;   // dynmap has not answered yet: only the site's last list is known
         List<DynmapClient.Online> players = config.showSwords && DynmapClient.playersKnown() ? DynmapClient.players() : List.of();
-        WarMarkers.update(index, war, players, config.dynmapWorld, System.currentTimeMillis());
+        WarMarkers.update(index, war, players, TerritoryManager.dynmapWorld(), System.currentTimeMillis());
     }
 }

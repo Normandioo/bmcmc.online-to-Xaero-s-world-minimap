@@ -11,6 +11,10 @@ import java.nio.file.Path;
 public final class Config {
     /** Where the site publishes the territories (gaia/territories.json on the site). */
     public String url = "https://bmcmc.online/gaia/territories.json";
+    /** Which of the site's maps is shown: "gaia" or "cumania" (Cumania IV, the event map). */
+    public String map = "gaia";
+    /** The map chosen on each server (by its address), so joining it again picks that map by itself. */
+    public java.util.Map<String, String> serverMaps = new java.util.HashMap<>();
     public boolean enabled = true;
     /** Which dimension the territories belong to: "overworld", "nether" or "end". */
     public String dimension = "overworld";
