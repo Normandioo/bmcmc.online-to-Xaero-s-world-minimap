@@ -21,7 +21,7 @@ public final class WorldMapTerritoryHighlighter extends AbstractHighlighter {
     }
 
     private static boolean applies(ResourceKey<Level> dimension) {
-        return TerritoryManager.active() && dimension == TerritoryManager.dimension();
+        return TerritoryManager.active() && TerritoryManager.inDimension(dimension);
     }
 
     @Override
