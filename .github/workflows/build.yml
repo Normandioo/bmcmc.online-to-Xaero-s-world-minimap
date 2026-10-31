@@ -59,6 +59,38 @@ jobs:
             !build/libs/*-sources.jar
             !build/libs/*-dev.jar
 
+  probe:
+    name: Probe Xaero ${{ matrix.mc }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        mc: ['26.1.2', '26.2', '26.3']
+    steps:
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+      - name: Probe
+        shell: bash
+        run: |
+          mc="${{ matrix.mc }}"; mkdir -p w m
+          for project in xaeros-world-map xaeros-minimap; do
+            url=$(curl -fsS "https://api.modrinth.com/v2/project/$project/version?loaders=%5B%22fabric%22%5D&game_versions=%5B%22$mc%22%5D" | python3 -c "import json,sys; v=json.load(sys.stdin); print(v[0]['files'][0]['url'])")
+            curl -fsSL -o $project.jar "$url"
+          done
+          (cd w && unzip -qo ../xaeros-world-map.jar); (cd m && unzip -qo ../xaeros-minimap.jar)
+          {
+            javap -p -cp w xaero.map.gui.GuiMap | grep -E ' (cameraDestination|destScale|mouseBlockPosX|mouseBlockPosZ|viewedOnMousePress|mapClicked)'
+            javap -p -cp w xaero.map.element.render.ElementRenderer | grep -E 'abstract' | sed 's/xaero\.map\.element\.render\.//g;s/xaero\.map\.graphics\.renderer\.multitexture\.//g;s/xaero\.map\.element\.//g'
+            javap -p -cp w xaero.map.highlight.HighlighterRegistry | grep -E ' (end|register)\('
+            javap -p -cp m xaero.common.minimap.highlight.HighlighterRegistry | grep -E ' (end|register)\('
+            javap -p -cp w xaero.map.element.MapElementGraphics | grep -E ' (fill|drawString)\(' | head -4
+            javap -p -cp w xaero.map.WorldMap | grep mapElementRenderHandler
+            javap -p -cp w xaero.map.element.MapElementRenderHandler | grep ' add('
+          } > probe.txt 2>&1
+          echo "::notice title=Probe $mc::$(cut -c1-250 probe.txt | sed ':a;N;$!ba;s/\n/%0A/g')"
+
   plugin:
     name: Server plugin (BmcWar)
     runs-on: ubuntu-latest
