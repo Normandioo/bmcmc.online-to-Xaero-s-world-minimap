@@ -45,7 +45,7 @@ public final class WarMarkerRenderer extends ElementRenderer<WarMarkers.Marker, 
         @Override public void begin(ElementRenderLocation location, Context context) {
             var config = TerritoryManager.config();
             List<WarMarkers.Marker> list = new ArrayList<>();
-            if (TerritoryManager.active() && context.dimension == TerritoryManager.dimension()) {
+            if (TerritoryManager.active() && TerritoryManager.inDimension(context.dimension)) {
                 for (WarMarkers.Marker m : WarMarkers.current()) {
                     boolean on = switch (m.kind()) {
                         case SWORD -> config.showSwords;

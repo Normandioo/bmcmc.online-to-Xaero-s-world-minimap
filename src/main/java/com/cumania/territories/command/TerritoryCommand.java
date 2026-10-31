@@ -30,6 +30,7 @@ public final class TerritoryCommand {
                                     (TerritoryManager.config().enabled ? "Showing " : "Hidden: ")
                                             + index.countryCount() + " countries, " + index.provinceCount()
                                             + " provinces (" + TerritoryManager.mapName() + ", data from " + (TerritoryManager.generated().isEmpty() ? "?" : TerritoryManager.generated()) + ")"
+                                            + ", you are in " + (net.minecraft.client.Minecraft.getInstance().level == null ? "?" : net.minecraft.client.Minecraft.getInstance().level.dimension())
                                             + (TerritoryManager.loadError().isEmpty() ? "" : "; last download failed: " + TerritoryManager.loadError())));
                             return 1;
                         }))));

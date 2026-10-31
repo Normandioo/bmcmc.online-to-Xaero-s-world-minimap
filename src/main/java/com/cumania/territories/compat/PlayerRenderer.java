@@ -101,7 +101,7 @@ public final class PlayerRenderer extends ElementRenderer<DynmapClient.Online, P
         @Override public void begin(ElementRenderLocation location, Context context) {
             var config = TerritoryManager.config();
             List<DynmapClient.Online> list = new ArrayList<>();
-            if (config.showOnlinePlayers && context.dimension == TerritoryManager.dimension()) {
+            if (config.showOnlinePlayers && TerritoryManager.inDimension(context.dimension)) {
                 DynmapClient.wantPlayers();   // the map is open: keep the list fresh
                 if (DynmapClient.playersKnown()) for (var p : DynmapClient.players()) if (p.world().equalsIgnoreCase(TerritoryManager.dynmapWorld())) list.add(p);
             }

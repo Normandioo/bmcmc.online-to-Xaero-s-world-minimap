@@ -72,7 +72,7 @@ public final class LocalityRenderer extends ElementRenderer<TerritoryFile.Locali
         @Override public void begin(ElementRenderLocation location, Context context) {
             var config = TerritoryManager.config();
             List<TerritoryFile.Locality> list = new ArrayList<>();
-            if (TerritoryManager.active() && config.showLocalities && context.dimension == TerritoryManager.dimension()) {
+            if (TerritoryManager.active() && config.showLocalities && TerritoryManager.inDimension(context.dimension)) {
                 double scale = effectiveScale(context);
                 for (TerritoryFile.Locality l : TerritoryManager.index().localities()) if (scale >= ICON_FROM[rank(l)] || Focus.is(l)) list.add(l);
             }
