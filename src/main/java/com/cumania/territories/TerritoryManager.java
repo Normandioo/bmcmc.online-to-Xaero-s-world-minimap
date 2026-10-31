@@ -31,6 +31,10 @@ public final class TerritoryManager {
     private static volatile String generated = "";
     private static int paintedFingerprint;
     private static final AtomicBoolean loading = new AtomicBoolean();
+    private static volatile boolean reloadAgain;
+    private static volatile String loadError = "";
+    /** Why the last download failed ("" when it worked), for the settings menu and /territories status. */
+    public static String loadError() { return loadError; }
     private static final HttpClient HTTP = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
     private static ScheduledExecutorService scheduler;
 
@@ -93,6 +97,7 @@ public final class TerritoryManager {
         saveConfig();
         cacheFile = cacheFor(wanted);
         index = TerritoryIndex.EMPTY;
+        loadError = "";
         paintedFingerprint = 0;
         selected = -1;
         generated = "";
@@ -161,7 +166,9 @@ public final class TerritoryManager {
             CumaniaTerritories.LOGGER.warn("Set \"url\" in {} to your site's territories.json", configFile);
             return;
         }
-        if (!loading.compareAndSet(false, true)) return;
+        if (!loading.compareAndSet(false, true)) { reloadAgain = true; return; }   // one is already running: go again when it ends (it may be for the other map)
+        final String forMap = config.map;
+        final Path forCache = cacheFile;
         HTTP.sendAsync(HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(30))
                         .header("User-Agent", "cumania-territories").GET().build(), HttpResponse.BodyHandlers.ofString())
                 .whenComplete((response, error) -> {
@@ -169,12 +176,16 @@ public final class TerritoryManager {
                         if (error != null) throw new IOException(error);
                         if (response.statusCode() != 200) throw new IOException("HTTP " + response.statusCode());
                         TerritoryFile file = TerritoryFile.parse(response.body());
-                        Files.writeString(cacheFile, response.body());
+                        if (!forMap.equals(config.map)) { reloadAgain = true; return; }   // the map was switched while this downloaded: it is the other one's
+                        Files.writeString(forCache, response.body());
+                        loadError = "";
                         apply(file, true);
                     } catch (IOException | RuntimeException e) {
+                        loadError = e.toString();
                         CumaniaTerritories.LOGGER.warn("Could not update territories from {}: {}", url, e.toString());
                     } finally {
                         loading.set(false);
+                        if (reloadAgain) { reloadAgain = false; reload(); }
                     }
                 });
     }
