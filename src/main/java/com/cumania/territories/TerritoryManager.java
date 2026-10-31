@@ -42,7 +42,6 @@ public final class TerritoryManager {
         configFile = configDir.resolve("cumania_territories.json");
         cacheFile = configDir.resolve("cumania_territories_cache.json");
         config = Config.load(configFile);
-        if (config.serverMaps == null) config.serverMaps = new java.util.HashMap<>();
         cacheFile = cacheFor(config.map);
         // Show the last download immediately, then check the site
         try { if (Files.exists(cacheFile)) apply(TerritoryFile.parse(Files.readString(cacheFile)), false); }
@@ -81,18 +80,39 @@ public final class TerritoryManager {
         return "gaia".equalsIgnoreCase(key) ? dir.resolve("cumania_territories_cache.json") : dir.resolve("cumania_territories_cache_" + key + ".json");
     }
 
-    /** Next map in the list (the settings button). Remembered for the server you are on. */
+    /** What the settings row shows: "Auto (Cumania IV)", "Gaia"... */
+    public static String mapLabel() { return config.autoMap ? "Auto (" + mapName() + ")" : mapName(); }
+
+    /** The settings button: Auto -> each map in turn -> Auto. */
     public static void nextMap() {
-        for (int i = 0; i < MAPS.length; i++) if (MAPS[i][0].equalsIgnoreCase(config.map)) { chooseMap(MAPS[(i + 1) % MAPS.length][0], true); return; }
-        chooseMap(MAPS[0][0], true);
+        if (config.autoMap) { config.autoMap = false; chooseMap(MAPS[0][0]); return; }
+        for (int i = 0; i < MAPS.length; i++) {
+            if (!MAPS[i][0].equalsIgnoreCase(config.map)) continue;
+            if (i + 1 < MAPS.length) chooseMap(MAPS[i + 1][0]);
+            else { config.autoMap = true; saveConfig(); }
+            return;
+        }
+        config.autoMap = true;
+        saveConfig();
+    }
+
+    /**
+     * Auto: both maps can be on the same server, so the map follows the dynmap world you are in (the dynmap lists every player with its world).
+     * Called once a second with that world's name, or null when dynmap has not shown you yet.
+     */
+    public static void followWorld(String dynmapWorld) {
+        if (!config.autoMap || dynmapWorld == null) return;
+        for (String[] m : MAPS) {
+            String world = m[3] != null ? m[3] : config.dynmapWorld;
+            if (world.equalsIgnoreCase(dynmapWorld)) { if (!m[0].equalsIgnoreCase(config.map)) chooseMap(m[0]); return; }
+        }
     }
 
     /** Switches to a map: nothing of the old one stays on screen. */
-    public static void chooseMap(String key, boolean remember) {
+    public static void chooseMap(String key) {
         String wanted = mapInfo(key)[0];
-        String ip = currentServer();
-        if (remember && ip != null) config.serverMaps.put(ip, wanted);
-        if (wanted.equalsIgnoreCase(config.map)) { if (remember) saveConfig(); return; }
+        saveConfig();
+        if (wanted.equalsIgnoreCase(config.map)) return;
         config.map = wanted;
         saveConfig();
         cacheFile = cacheFor(wanted);
@@ -108,18 +128,6 @@ public final class TerritoryManager {
         try { if (Files.exists(cacheFile)) apply(TerritoryFile.parse(Files.readString(cacheFile)), true); else changed(); }
         catch (IOException | RuntimeException e) { changed(); }
         reload();
-    }
-
-    /** On joining a server: the map chosen there last time, if any. */
-    public static void onJoin() {
-        String ip = currentServer();
-        String key = ip == null ? null : config.serverMaps.get(ip);
-        chooseMap(key != null ? key : "gaia", false);   // a server you never picked a map for is Gaia's, not whatever was chosen on the last one
-    }
-
-    private static String currentServer() {
-        var data = Minecraft.getInstance().getCurrentServer();
-        return data == null || data.ip == null ? null : data.ip.toLowerCase();
     }
 
     private static void rescheduleRefresh() {

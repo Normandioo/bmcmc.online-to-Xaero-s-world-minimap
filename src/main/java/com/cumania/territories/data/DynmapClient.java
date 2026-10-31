@@ -94,11 +94,11 @@ public final class DynmapClient {
     private static void tick() {
         try {
             var config = TerritoryManager.config();
-            if (!config.showOnlinePlayers && !config.liveWar && !config.showSwords) return;
+            if (!config.showOnlinePlayers && !config.liveWar && !config.showSwords && !config.autoMap) return;
             long now = System.currentTimeMillis();
             long every = Math.max(500, config.dynmapRefreshMs);
             playersEvery = every;
-            if (now - wantMap < 3000 && now - lastPlayersPoll >= every && (config.showOnlinePlayers || config.showSwords)) { lastPlayersPoll = now; pollPlayers(); }
+            if (now - wantMap < 3000 && now - lastPlayersPoll >= every && (config.showOnlinePlayers || config.showSwords || config.autoMap)) { lastPlayersPoll = now; pollPlayers(); }
             boolean watching = now - wantMarkers < 3000;
             boolean background = now - wantBackground < 3000;
             long markersEvery = watching ? 8000 : 20000;
