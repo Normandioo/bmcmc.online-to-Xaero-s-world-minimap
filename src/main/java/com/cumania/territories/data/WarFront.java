@@ -63,8 +63,6 @@ public final class WarFront {
     private final List<Hot> hot = new ArrayList<>();
     /** Units u -> neighbours that put u In Play (the site's "by"). */
     private final Map<Unit, Set<Unit>> putsInPlay = new HashMap<>();
-    /** Pairs of units joined only through an open Bridge or Strait, and pairs with a Connection of their own. A Bridge is never captured, so no front line is drawn across one. */
-    private final Set<String> bridgePairs = new HashSet<>(), directPairs = new HashSet<>();
     private int sides;
     private TerritoryFile.WarInfo war;
     private static volatile WarFront viewing;
@@ -274,7 +272,6 @@ public final class WarFront {
             for (Unit v : e.getValue()) {
                 if (u.control == NEUTRAL || v.control == NEUTRAL || u.control == v.control) continue;
                 String uv = pair(u, v);
-                if (g.bridgePairs.contains(uv) && !g.directPairs.contains(uv)) continue;   // only a Bridge or Strait joins them: nothing to capture there, no line
                 if (!drawn.add(uv)) continue;
                 TerritoryFile.Locality bestA = null, bestB = null;
                 double best = Double.MAX_VALUE;
@@ -300,7 +297,7 @@ public final class WarFront {
         Map<String, List<String>> linkEnds = new HashMap<>();
         for (String[] e : edges) {
             Unit a = unitByCity.get(e[0]), b = unitByCity.get(e[1]);
-            if (a != null && b != null) { link(a, b, false); if (a != b) directPairs.add(pair(a, b)); }
+            if (a != null && b != null) { link(a, b, false); }
             else if (a != null && linkOpen.containsKey(e[1])) linkEnds.computeIfAbsent(e[1], k -> new ArrayList<>()).add(e[0]);
             else if (b != null && linkOpen.containsKey(e[0])) linkEnds.computeIfAbsent(e[0], k -> new ArrayList<>()).add(e[1]);
         }
@@ -311,7 +308,6 @@ public final class WarFront {
             for (int i = 0; i < ends.size(); i++) for (int j = i + 1; j < ends.size(); j++) {
                 Unit a = unitByCity.get(ends.get(i)), b = unitByCity.get(ends.get(j));
                 link(a, b, false);
-                if (a != null && b != null && a != b) bridgePairs.add(pair(a, b));
             }
         }
 
