@@ -132,7 +132,7 @@ public final class WarPaint {
         for (WarFront.Hot h : WarFront.of(index, war).innerLines()) quiet.add(new FrontLines.Seg(h.a().x, h.a().z, h.b().x, h.b().z, INNER, INNER));
         // nations with cities but no land on the political map: the capture limits are their territory
         boolean event = !zones.isEmpty() && !sideOf.isEmpty();
-        for (String c : sideOf.keySet()) if (index.countryIndex(c) >= 0) { event = false; break; }
+        for (String c : sideOf.keySet()) { int ci = index.countryIndex(c); if (ci >= 0 && index.countryHasLand(ci)) { event = false; break; } }
         return new Paint(rgb, provinces, bounds, zones, FrontLines.build(segs), FrontLines.build(quiet, true), event);
     }
 
