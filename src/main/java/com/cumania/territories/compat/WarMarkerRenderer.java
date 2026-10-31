@@ -82,6 +82,20 @@ public final class WarMarkerRenderer extends ElementRenderer<WarMarkers.Marker, 
         @Override public boolean isInteractable(ElementRenderLocation location, WarMarkers.Marker m) { return false; }
     }
 
+    // ---- Xaero's World Map 26.1 hands the renderers Minecraft's MultiBufferSource.BufferSource where 26.2 and later hand its own XaeroBufferProvider.
+    // The same methods are declared for both, so one jar runs on all of them (the other pair is never called; the buffers are not used). The element is an
+    // Object here because that is what the old abstract methods erase to.
+    public void preRender(ElementRenderInfo info, net.minecraft.client.renderer.MultiBufferSource.BufferSource buffers, MultiTextureRenderTypeRendererProvider providers, boolean shadow) {
+        preRender(info, (XaeroBufferProvider) null, providers, shadow);
+    }
+    public void postRender(ElementRenderInfo info, net.minecraft.client.renderer.MultiBufferSource.BufferSource buffers, MultiTextureRenderTypeRendererProvider providers, boolean shadow) {}
+    public void renderElementShadow(Object element, boolean hovered, float optionalScale, double partialX, double partialY, ElementRenderInfo info,
+                                    MapElementGraphics graphics, net.minecraft.client.renderer.MultiBufferSource.BufferSource buffers, MultiTextureRenderTypeRendererProvider providers) {}
+    public boolean renderElement(Object element, boolean hovered, double optionalDepth, float optionalScale, double partialX, double partialY, ElementRenderInfo info,
+                                 MapElementGraphics graphics, net.minecraft.client.renderer.MultiBufferSource.BufferSource buffers, MultiTextureRenderTypeRendererProvider providers) {
+        return renderElement((WarMarkers.Marker) element, hovered, optionalDepth, optionalScale, partialX, partialY, info, graphics, (XaeroBufferProvider) null, providers);
+    }
+
     @Override public void preRender(ElementRenderInfo info, XaeroBufferProvider buffers, MultiTextureRenderTypeRendererProvider providers, boolean shadow) {
         context.dimension = info.mapDimension;
     }

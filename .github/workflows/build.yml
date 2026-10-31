@@ -17,9 +17,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { mc: '26.1.2', range: '>=26.1 <26.2', old_xaero: 'true' }
-          - { mc: '26.2',   range: '>=26.2 <26.3', old_xaero: 'false' }
-          - { mc: '26.3',   range: '>=26.3 <26.4', old_xaero: 'false' }
+          - { mc: '26.2', ship: true }
+          - { mc: '26.3', ship: false }   # compile check only: the same jar must build against it too
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -44,7 +43,7 @@ jobs:
           if [ -z "$api" ]; then echo "::error title=No Fabric API for $mc::none on Modrinth"; exit 1; fi
           echo "fabric api $api"
           chmod +x gradlew
-          ./gradlew build --no-daemon -Pminecraft_version=$mc -Pfabric_api_version=$api "-Pmc_range=${{ matrix.range }}" -Pold_xaero=${{ matrix.old_xaero }} > build.log 2>&1
+          ./gradlew build --no-daemon -Pminecraft_version=$mc -Pfabric_api_version=$api "-Pmc_range=>=26.1 <26.4" -Pjar_tag=mc26.x > build.log 2>&1
           code=$?
           if [ $code -ne 0 ]; then
             echo "::error title=Gradle failed on $mc::$(grep -E 'error:|What went wrong' -A2 build.log | grep -v '^--' | cut -c1-230 | sed 's#.*territories/##' | head -200 | sed ':a;N;$!ba;s/\n/%0A/g')"
@@ -52,44 +51,53 @@ jobs:
           cat build.log | tail -5
           exit $code
       - uses: actions/upload-artifact@v4
+        if: matrix.ship
         with:
-          name: cumania-territories-${{ matrix.mc }}
+          name: cumania-territories
           path: |
             build/libs/*.jar
             !build/libs/*-sources.jar
             !build/libs/*-dev.jar
 
-  probe:
-    name: Probe Xaero ${{ matrix.mc }}
+  # The one jar also has to run on 26.1, which this build cannot compile against (Xaero's 26.1 API still uses Minecraft's MultiBufferSource): check that
+  # the methods Xaero's 26.1 expects of a renderer are in the jar, and that what the mixins aim at is in Xaero's 26.1.
+  verify-26-1:
+    name: Check Xaero 26.1.2 against the jar
+    needs: mod
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        mc: ['26.1.2', '26.2', '26.3']
     steps:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 25
-      - name: Probe
+      - uses: actions/download-artifact@v4
+        with:
+          name: cumania-territories
+          path: jar
+      - name: Check
         shell: bash
         run: |
-          mc="${{ matrix.mc }}"; mkdir -p w m
-          for project in xaeros-world-map xaeros-minimap; do
-            url=$(curl -fsS "https://api.modrinth.com/v2/project/$project/version?loaders=%5B%22fabric%22%5D&game_versions=%5B%22$mc%22%5D" | python3 -c "import json,sys; v=json.load(sys.stdin); print(v[0]['files'][0]['url'])")
-            curl -fsSL -o $project.jar "$url"
+          mc=26.1.2; mkdir -p w
+          url=$(curl -fsS "https://api.modrinth.com/v2/project/xaeros-world-map/version?loaders=%5B%22fabric%22%5D&game_versions=%5B%22$mc%22%5D" | python3 -c "import json,sys; v=json.load(sys.stdin); print(v[0]['files'][0]['url'])")
+          curl -fsSL -o xwm.jar "$url"; (cd w && unzip -qo ../xwm.jar)
+          jar=$(ls jar/*.jar | head -1); echo "jar: $jar"
+          fail=0
+          javap -p -cp w xaero.map.element.render.ElementRenderer | grep abstract | grep MultiBufferSource > want.txt
+          cat want.txt
+          for c in LocalityRenderer PlayerRenderer WarMarkerRenderer; do
+            javap -p -cp "$jar" "com.cumania.territories.compat.$c" > have.txt
+            for m in preRender postRender renderElementShadow renderElement; do
+              grep -q " $m(" have.txt || { echo "::error title=26.1::$c has no $m"; fail=1; }
+            done
+            # the 26.1 signatures, with the element as Object (what the generic erases to)
+            n=$(grep -c 'MultiBufferSource\$BufferSource' have.txt); [ "$n" -ge 4 ] || { echo "::error title=26.1::$c declares only $n methods with MultiBufferSource"; fail=1; }
+            grep -q 'renderElement(java.lang.Object, boolean, double, float, double, double, xaero.map.element.render.ElementRenderInfo, xaero.map.element.MapElementGraphics, net.minecraft.client.renderer.MultiBufferSource\$BufferSource' have.txt || { echo "::error title=26.1::$c: renderElement(Object, ...MultiBufferSource) is missing"; fail=1; }
           done
-          (cd w && unzip -qo ../xaeros-world-map.jar); (cd m && unzip -qo ../xaeros-minimap.jar)
-          {
-            javap -p -cp w xaero.map.gui.GuiMap | grep -E ' (cameraDestination|destScale|mouseBlockPosX|mouseBlockPosZ|viewedOnMousePress|mapClicked)'
-            javap -p -cp w xaero.map.element.render.ElementRenderer | grep -E 'abstract' | sed 's/xaero\.map\.element\.render\.//g;s/xaero\.map\.graphics\.renderer\.multitexture\.//g;s/xaero\.map\.element\.//g'
-            javap -p -cp w xaero.map.highlight.HighlighterRegistry | grep -E ' (end|register)\('
-            javap -p -cp m xaero.common.minimap.highlight.HighlighterRegistry | grep -E ' (end|register)\('
-            javap -p -cp w xaero.map.element.MapElementGraphics | grep -E ' (fill|drawString)\(' | head -4
-            javap -p -cp w xaero.map.WorldMap | grep mapElementRenderHandler
-            javap -p -cp w xaero.map.element.MapElementRenderHandler | grep ' add('
-          } > probe.txt 2>&1
-          echo "::notice title=Probe $mc::$(cut -c1-250 probe.txt | sed ':a;N;$!ba;s/\n/%0A/g')"
+          for f in cameraDestination destScale mouseBlockPosX mouseBlockPosZ viewedOnMousePress; do
+            javap -p -cp w xaero.map.gui.GuiMap | grep -q " $f;" || { echo "::error title=26.1::GuiMap.$f is missing"; fail=1; }
+          done
+          javap -p -cp w xaero.map.gui.GuiMap | grep -q "mapClicked(int, int, int)" || { echo "::error title=26.1::GuiMap.mapClicked is missing"; fail=1; }
+          exit $fail
 
   plugin:
     name: Server plugin (BmcWar)
@@ -127,7 +135,7 @@ jobs:
   release:
     name: Release
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/claude/mc-26.2' || startsWith(github.ref, 'refs/tags/v'))
-    needs: [mod, plugin]
+    needs: [mod, plugin, verify-26-1]
     runs-on: ubuntu-latest
     permissions:
       contents: write
