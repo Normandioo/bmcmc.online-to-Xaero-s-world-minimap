@@ -29,7 +29,8 @@ public final class TerritoryCommand {
                             ctx.getSource().sendFeedback(Component.literal(
                                     (TerritoryManager.config().enabled ? "Showing " : "Hidden: ")
                                             + index.countryCount() + " countries, " + index.provinceCount()
-                                            + " provinces (data from " + (TerritoryManager.generated().isEmpty() ? "?" : TerritoryManager.generated()) + ")"));
+                                            + " provinces (" + TerritoryManager.mapName() + ", data from " + (TerritoryManager.generated().isEmpty() ? "?" : TerritoryManager.generated()) + ")"
+                                            + (TerritoryManager.loadError().isEmpty() ? "" : "; last download failed: " + TerritoryManager.loadError())));
                             return 1;
                         }))));
     }
