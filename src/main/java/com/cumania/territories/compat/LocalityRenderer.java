@@ -63,6 +63,18 @@ public final class LocalityRenderer extends ElementRenderer<TerritoryFile.Locali
 
     static double effectiveScale(Context c) { return c.scale * Math.max(0.05, TerritoryManager.config().localityZoomBias); }
 
+    /** City key -> the colour its marker takes in the war view being drawn (see WarMarkers.iconColours). Read on the render thread only. */
+    private static volatile java.util.Map<String, String> holders = java.util.Map.of();
+
+    private static final java.util.regex.Pattern ICON_COLOUR = java.util.regex.Pattern.compile("(Red|Blue|Green|Contested|Uncontrolled)$");
+
+    /** The marker's icon name: the site's own, with the colour of whoever holds the city now (when a war view says). */
+    private static String iconKind(TerritoryFile.Locality l) {
+        String kind = l.iconKind != null ? l.iconKind : l.kind;
+        String colour = holders.get(com.cumania.territories.data.WarScore.key(l.name, l.country));
+        return colour == null || kind == null ? kind : ICON_COLOUR.matcher(kind).replaceFirst("") + colour;
+    }
+
     // ---- provider: which cities to draw this frame ----
 
     private static final class Provider extends ElementRenderProvider<TerritoryFile.Locality, Context> {
@@ -82,6 +94,9 @@ public final class LocalityRenderer extends ElementRenderer<TerritoryFile.Locali
                     if (scale >= ICON_FROM[rank(l)] || Focus.is(l)) list.add(l);
                 }
             }
+            // in a war view the markers take the colour of whoever holds each city now
+            var paint = com.cumania.territories.data.WarPaint.current();
+            holders = paint == null || list.isEmpty() ? java.util.Map.of() : com.cumania.territories.data.WarMarkers.iconColours(TerritoryManager.index(), WarMenu.viewedWarId());
             visible = list; next = 0;
         }
         @Override public boolean hasNext(ElementRenderLocation location, Context context) { return next < visible.size(); }
@@ -132,7 +147,7 @@ public final class LocalityRenderer extends ElementRenderer<TerritoryFile.Locali
         int rank = rank(l);
         var config = TerritoryManager.config();
         int r, o = isCapital(l) ? 2 : 1;
-        IconCache.Icon icon = "simple".equalsIgnoreCase(config.markerStyle) ? null : IconCache.get(config.markerIconUrl, l.iconKind != null ? l.iconKind : l.kind);
+        IconCache.Icon icon = "simple".equalsIgnoreCase(config.markerStyle) ? null : IconCache.get(config.markerIconUrl, iconKind(l));
         if (icon != null) {
             // the site's own marker, centred on the city
             int half = icon.size() / 2;

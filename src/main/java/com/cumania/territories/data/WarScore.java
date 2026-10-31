@@ -48,7 +48,7 @@ public final class WarScore {
     private static TerritoryIndex valuesFor;
     private static Map<String, Double> values = Map.of();
 
-    static String key(String name, String country) { return (name + "(" + country + ")").toLowerCase(); }
+    public static String key(String name, String country) { return (name + "(" + country + ")").toLowerCase(); }
 
     /** Small, Medium or Large for a settlement (a "...Capital" kind counts as its tier); null for anything else. */
     static String tier(String kind) {

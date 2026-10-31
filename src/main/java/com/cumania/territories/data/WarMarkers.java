@@ -50,6 +50,29 @@ public final class WarMarkers {
         return first;
     }
 
+    private static WarScore.Result iconsOf;
+    private static String iconsWar;
+    private static Map<String, String> icons = Map.of();
+
+    /**
+     * The colour each city's marker takes from who holds it now in the war being followed: key "name(country)" in lower case -> Red / Blue /
+     * Green / Contested / Uncontrolled (the site's icon names). Updates as the war's control does, so a captured city changes colour.
+     */
+    public static synchronized Map<String, String> iconColours(TerritoryIndex index, String viewedId) {
+        TerritoryFile.WarInfo war = followed(index, viewedId);
+        if (war == null) { iconsOf = null; iconsWar = null; icons = Map.of(); return icons; }
+        WarScore.Result score = WarScore.of(index, war);
+        if (score == iconsOf && war.id.equals(iconsWar)) return icons;
+        Map<String, String> out = new HashMap<>();
+        for (WarScore.Holding h : score.holdings()) {
+            String colour = "contested".equals(h.state()) ? "Contested" : "uncontrolled".equals(h.state()) ? "Uncontrolled"
+                    : h.holder() == 0 ? "Red" : h.holder() == 1 ? "Blue" : h.holder() == 2 ? "Green" : null;
+            if (colour != null) out.put(WarScore.key(h.locality().name, h.locality().country), colour);
+        }
+        iconsOf = score; iconsWar = war.id; icons = out;
+        return out;
+    }
+
     public static void update(TerritoryIndex index, TerritoryFile.WarInfo war, List<DynmapClient.Online> players, String world, long now) {
         WarScore.Result score = WarScore.of(index, war);
         WarFront front = WarFront.of(index, war);
