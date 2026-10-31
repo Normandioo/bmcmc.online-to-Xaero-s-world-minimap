@@ -6,7 +6,7 @@ import com.cumania.territories.data.IconCache;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 
 import java.util.ArrayList;
@@ -55,7 +55,7 @@ public final class SettingsMenu {
         if (redraw) repaintAt = System.currentTimeMillis() + 350;
     }
 
-    public static void render(GuiGraphics g, int mx, int my) {
+    public static void render(GuiGraphicsExtractor g, int mx, int my) {
         mouseX = mx; mouseY = my;
         hits.clear();
         if (drag != null) {
@@ -77,7 +77,7 @@ public final class SettingsMenu {
         if (logo != null) {
             for (IconCache.Rect r : logo.rects()) g.fill(btnX + 2 + r.x(), 7 + r.y(), btnX + 2 + r.x() + r.w(), 7 + r.y() + r.h(), r.argb());
         } else {
-            g.drawString(font, "BMC", btnX + (BTN - font.width("BMC")) / 2, 11, 0xFFFFFFFF, true);
+            g.text(font, "BMC", btnX + (BTN - font.width("BMC")) / 2, 11, 0xFFFFFFFF, true);
         }
         // the second button, left of the first: the war options (a sword)
         btn2X = btnX - BTN - 4;
@@ -89,7 +89,7 @@ public final class SettingsMenu {
         if (!open) { panelH = 0; return; }
 
         // rows
-        int rowCount = page == 1 ? 8 : 10;
+        int rowCount = page == 1 ? 8 : 11;
         panelH = HEADER_H + 7 + rowCount * ROW + 14;
         panelH = Math.min(panelH, screenH - TOP - 6);
         int anchor = page == 1 ? btn2X : btnX;
@@ -100,8 +100,8 @@ public final class SettingsMenu {
         g.fill(x0, y0, x0 + PW, y0 + HEADER_H, 0xFF1E3A5C);
         g.fill(x0, y0 + HEADER_H - 1, x0 + PW, y0 + HEADER_H, ACCENT);
         Component title = Component.literal(page == 1 ? "War options" : "Map settings").withStyle(ChatFormatting.BOLD);
-        g.drawString(font, title, x0 + (PW - font.width(title)) / 2, y0 + 8, 0xFFFFFFFF, true);
-        g.drawString(font, "x", x0 + PW - 14, y0 + 8, 0xFFDDDDDD, true);
+        g.text(font, title, x0 + (PW - font.width(title)) / 2, y0 + 8, 0xFFFFFFFF, true);
+        g.text(font, "x", x0 + PW - 14, y0 + 8, 0xFFDDDDDD, true);
         hits.add(new Hit(x0 + PW - 22, y0, x0 + PW, y0 + HEADER_H, () -> open = false));
 
         int y = y0 + HEADER_H + 7;
@@ -115,6 +115,7 @@ public final class SettingsMenu {
             y = toggle(g, font, x0, y, "Grey out others in wars", c.warGreyOthers, () -> { c.warGreyOthers = !c.warGreyOthers; changed(true); });
             y = toggle(g, font, x0, y, "Live war control", c.liveWar, () -> { c.liveWar = !c.liveWar; changed(false); WarMenu.liveChanged(); });
         } else {
+            y = choice(g, font, x0, y, "Map", TerritoryManager.mapName(), TerritoryManager::nextMap);
             y = stepper(g, font, x0, y, "Territory colour", c.fillAlpha, v -> c.fillAlpha = v);
             y = stepper(g, font, x0, y, "Borders", c.borderAlpha, v -> c.borderAlpha = v);
             y = toggle(g, font, x0, y, "Show territories", c.enabled, () -> { TerritoryManager.toggle(); });
@@ -127,26 +128,26 @@ public final class SettingsMenu {
             y = toggle(g, font, x0, y, "Online players", c.showOnlinePlayers, () -> { c.showOnlinePlayers = !c.showOnlinePlayers; changed(false); });
             y = slider(g, font, x0, y, "Player icon size", c.playerIconPercent, 100, 400, v -> c.playerIconPercent = v);
         }
-        g.drawString(font, Fit.text(font, "Saved to config/cumania_territories.json", PW - 2 * PAD), x0 + PAD, y + 3, 0xFF707070, false);
+        g.text(font, Fit.text(font, "Saved to config/cumania_territories.json", PW - 2 * PAD), x0 + PAD, y + 3, 0xFF707070, false);
     }
 
     private static boolean over(int x0, int y, int x1) { return mouseX >= x0 && mouseX < x1 && mouseY >= y - 2 && mouseY < y + ROW - 3; }
 
-    private static int toggle(GuiGraphics g, Font font, int x0, int y, String label, boolean on, Runnable action) {
+    private static int toggle(GuiGraphicsExtractor g, Font font, int x0, int y, String label, boolean on, Runnable action) {
         boolean hover = over(x0 + PAD, y, x0 + PW - PAD);
         g.fill(x0 + PAD, y, x0 + PAD + 10, y + 10, on ? ON : 0xFF444444);
         g.fill(x0 + PAD + 1, y + 1, x0 + PAD + 9, y + 9, on ? 0xFF1C3A1C : 0xFF181818);
         if (on) g.fill(x0 + PAD + 3, y + 3, x0 + PAD + 7, y + 7, ON);
-        g.drawString(font, Fit.text(font, label, PW - 2 * PAD - 18), x0 + PAD + 16, y + 1, hover ? 0xFFFFFFFF : TEXT, true);
+        g.text(font, Fit.text(font, label, PW - 2 * PAD - 18), x0 + PAD + 16, y + 1, hover ? 0xFFFFFFFF : TEXT, true);
         hits.add(new Hit(x0 + PAD, y - 2, x0 + PW - PAD, y + ROW - 3, action));
         return y + ROW;
     }
 
-    private static int choice(GuiGraphics g, Font font, int x0, int y, String label, String value, Runnable action) {
+    private static int choice(GuiGraphicsExtractor g, Font font, int x0, int y, String label, String value, Runnable action) {
         boolean hover = over(x0 + PAD, y, x0 + PW - PAD);
-        g.drawString(font, label, x0 + PAD, y + 1, hover ? 0xFFFFFFFF : TEXT, true);
+        g.text(font, label, x0 + PAD, y + 1, hover ? 0xFFFFFFFF : TEXT, true);
         String shown = "[ " + value + " ]";
-        g.drawString(font, shown, x0 + PW - PAD - font.width(shown), y + 1, hover ? 0xFFFFFFFF : LINK, true);
+        g.text(font, shown, x0 + PW - PAD - font.width(shown), y + 1, hover ? 0xFFFFFFFF : LINK, true);
         hits.add(new Hit(x0 + PAD, y - 2, x0 + PW - PAD, y + ROW - 3, action));
         return y + ROW;
     }
@@ -154,8 +155,8 @@ public final class SettingsMenu {
     private static Runnable drag;   // set while a slider is being dragged: moves its value to the mouse
 
     /** "Label   [----O------] 200%": click or drag along the track. */
-    private static int slider(GuiGraphics g, Font font, int x0, int y, String label, int value, int min, int max, java.util.function.IntConsumer set) {
-        g.drawString(font, label, x0 + PAD, y + 1, TEXT, true);
+    private static int slider(GuiGraphicsExtractor g, Font font, int x0, int y, String label, int value, int min, int max, java.util.function.IntConsumer set) {
+        g.text(font, label, x0 + PAD, y + 1, TEXT, true);
         String shown = value + "%";
         int right = x0 + PW - PAD, trackW = 76, tx = right - font.width("400%") - 8 - trackW;
         double share = (Math.max(min, Math.min(max, value)) - min) / (double) (max - min);
@@ -163,7 +164,7 @@ public final class SettingsMenu {
         g.fill(tx, y + 5, tx + trackW, y + 8, 0xFF444444);
         g.fill(tx, y + 5, kx, y + 8, ON);
         g.fill(kx - 2, y, kx + 3, y + 12, 0xFFFFFFFF);
-        g.drawString(font, shown, right - font.width(shown), y + 1, 0xFFFFFFFF, true);
+        g.text(font, shown, right - font.width(shown), y + 1, 0xFFFFFFFF, true);
         Runnable apply = () -> {
             double s = Math.max(0, Math.min(1, (mouseX - tx) / (double) trackW));
             set.accept((int) Math.round((min + s * (max - min)) / 5.0) * 5);
@@ -173,22 +174,22 @@ public final class SettingsMenu {
     }
 
     /** "Label        [-] 35% [+]" in steps of 10%. */
-    private static int stepper(GuiGraphics g, Font font, int x0, int y, String label, int alpha, java.util.function.IntConsumer set) {
+    private static int stepper(GuiGraphicsExtractor g, Font font, int x0, int y, String label, int alpha, java.util.function.IntConsumer set) {
         int percent = Math.round(alpha * 100f / 255f);
-        g.drawString(font, label, x0 + PAD, y + 1, TEXT, true);
+        g.text(font, label, x0 + PAD, y + 1, TEXT, true);
         String value = percent + "%";
         int right = x0 + PW - PAD;
         int plusX = right - 14, valueX = plusX - 6 - 30, minusX = valueX - 6 - 14;
         button(g, font, minusX, y - 1, "-", () -> { set.accept(Math.max(0, Math.round((percent - 10) / 10f) * 10 * 255 / 100)); changed(true); });
-        g.drawString(font, value, valueX + (30 - font.width(value)) / 2, y + 1, 0xFFFFFFFF, true);
+        g.text(font, value, valueX + (30 - font.width(value)) / 2, y + 1, 0xFFFFFFFF, true);
         button(g, font, plusX, y - 1, "+", () -> { set.accept(Math.min(255, Math.round((percent + 10) / 10f) * 10 * 255 / 100)); changed(true); });
         return y + ROW;
     }
 
-    private static void button(GuiGraphics g, Font font, int x, int y, String text, Runnable action) {
+    private static void button(GuiGraphicsExtractor g, Font font, int x, int y, String text, Runnable action) {
         boolean hover = mouseX >= x && mouseX < x + 14 && mouseY >= y && mouseY < y + 13;
         g.fill(x, y, x + 14, y + 13, hover ? 0xFF4A6A90 : 0xFF2A3A4C);
-        g.drawString(font, text, x + (14 - font.width(text)) / 2, y + 3, 0xFFFFFFFF, true);
+        g.text(font, text, x + (14 - font.width(text)) / 2, y + 3, 0xFFFFFFFF, true);
         hits.add(new Hit(x, y, x + 14, y + 13, action));
     }
 }

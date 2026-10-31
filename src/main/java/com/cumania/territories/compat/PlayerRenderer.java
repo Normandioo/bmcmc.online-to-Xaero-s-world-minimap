@@ -5,7 +5,7 @@ import com.cumania.territories.data.DynmapClient;
 import com.cumania.territories.data.FaceCache;
 import com.cumania.territories.data.FlagCache;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.MultiBufferSource;
+import xaero.lib.client.graphics.XaeroBufferProvider;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
 import xaero.map.element.MapElementGraphics;
@@ -47,7 +47,7 @@ public final class PlayerRenderer extends ElementRenderer<DynmapClient.Online, P
         int nation = index.nationOfPlayer(p.siteName());
         if (nation < 0) return null;
         var info = index.countryData(nation).info;
-        String rel = info == null ? null : info.get("flag"), base = TerritoryManager.config().url;
+        String rel = info == null ? null : info.get("flag"), base = TerritoryManager.mapUrl();
         if (rel == null || rel.isBlank() || base == null || !base.contains("/")) return null;
         String url = base.substring(0, base.lastIndexOf('/') + 1) + rel;
         Small known = smallFlags.get(url);
@@ -103,7 +103,7 @@ public final class PlayerRenderer extends ElementRenderer<DynmapClient.Online, P
             List<DynmapClient.Online> list = new ArrayList<>();
             if (config.showOnlinePlayers && context.dimension == TerritoryManager.dimension()) {
                 DynmapClient.wantPlayers();   // the map is open: keep the list fresh
-                if (DynmapClient.playersKnown()) for (var p : DynmapClient.players()) if (p.world().equalsIgnoreCase(config.dynmapWorld)) list.add(p);
+                if (DynmapClient.playersKnown()) for (var p : DynmapClient.players()) if (p.world().equalsIgnoreCase(TerritoryManager.dynmapWorld())) list.add(p);
             }
             PlayerTracker.update(list);
             visible = list; next = 0;
@@ -134,18 +134,18 @@ public final class PlayerRenderer extends ElementRenderer<DynmapClient.Online, P
         @Override public boolean isInteractable(ElementRenderLocation location, DynmapClient.Online p) { return true; }
     }
 
-    @Override public void preRender(ElementRenderInfo info, MultiBufferSource.BufferSource buffers, MultiTextureRenderTypeRendererProvider providers, boolean shadow) {
+    @Override public void preRender(ElementRenderInfo info, XaeroBufferProvider buffers, MultiTextureRenderTypeRendererProvider providers, boolean shadow) {
         context.dimension = info.mapDimension;
         context.scale = info.scale;
     }
 
-    @Override public void postRender(ElementRenderInfo info, MultiBufferSource.BufferSource buffers, MultiTextureRenderTypeRendererProvider providers, boolean shadow) {}
+    @Override public void postRender(ElementRenderInfo info, XaeroBufferProvider buffers, MultiTextureRenderTypeRendererProvider providers, boolean shadow) {}
 
     @Override public void renderElementShadow(DynmapClient.Online p, boolean hovered, float optionalScale, double partialX, double partialY, ElementRenderInfo info,
-                                              MapElementGraphics graphics, MultiBufferSource.BufferSource buffers, MultiTextureRenderTypeRendererProvider providers) {}
+                                              MapElementGraphics graphics, XaeroBufferProvider buffers, MultiTextureRenderTypeRendererProvider providers) {}
 
     @Override public boolean renderElement(DynmapClient.Online p, boolean hovered, double optionalDepth, float optionalScale, double partialX, double partialY, ElementRenderInfo info,
-                                           MapElementGraphics graphics, MultiBufferSource.BufferSource buffers, MultiTextureRenderTypeRendererProvider providers) {
+                                           MapElementGraphics graphics, XaeroBufferProvider buffers, MultiTextureRenderTypeRendererProvider providers) {
         int half = head() / 2;
         graphics.fill(-half - 1, -half - 1, half + 1, half + 1, hovered ? 0xFFFFD400 : 0xFFFFFFFF);   // the ring, as on the site
         int[] face = FaceCache.get(DynmapClient.faceUrl(p.account()));

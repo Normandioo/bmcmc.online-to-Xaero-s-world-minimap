@@ -11,7 +11,7 @@ import com.cumania.territories.data.WarScore;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 
 import java.time.Duration;
@@ -185,7 +185,7 @@ public final class WarMenu {
     }
 
     private static void goTo(int x, int z) {
-        if (Minecraft.getInstance().screen instanceof CameraTarget camera) camera.cumania$goTo(x, z, TerritoryManager.config().goToZoom);
+        if (Screens.current() instanceof CameraTarget camera) camera.cumania$goTo(x, z, TerritoryManager.config().goToZoom);
     }
 
     // ---------------------------------------------------------------- time helpers
@@ -592,7 +592,7 @@ public final class WarMenu {
 
     // ---------------------------------------------------------------- drawing
 
-    public static void render(GuiGraphics g, int mx, int my) {
+    public static void render(GuiGraphicsExtractor g, int mx, int my) {
         mouseX = mx; mouseY = my;
         hits.clear();
         var config = TerritoryManager.config();
@@ -610,7 +610,7 @@ public final class WarMenu {
         int chipBg = open ? 0xFFB03030 : running > 0 ? (overChip ? 0xFFC04040 : 0xFF8A2424) : (overChip ? 0xFF505050 : 0xFF303030);
         g.fill(chipX - 1, 5, chipX + chipW + 1, 7 + CHIP_H, 0xFFFFB0B0 & (open || running > 0 ? 0xFFFFFFFF : 0xFFAAAAAA));
         g.fill(chipX, 6, chipX + chipW, 6 + CHIP_H, chipBg);
-        g.drawString(font, chipText, chipX + (chipW - font.width(chipText)) / 2, 6 + 5, 0xFFFFFFFF, true);
+        g.text(font, chipText, chipX + (chipW - font.width(chipText)) / 2, 6 + 5, 0xFFFFFFFF, true);
         if (!open) { panelH = 0; return; }
 
         // content (an open war or alliance that vanished from the data goes back to the list)
@@ -657,11 +657,11 @@ public final class WarMenu {
         g.fill(x0, y0 + HEADER_H - 1, x0 + PW, y0 + HEADER_H, accent);
         String title = Fit.bold(font, war != null ? war.name : alliance != null ? alliance.name : "War menu", PW - 62);
         Component titleText = Component.literal(title).withStyle(ChatFormatting.BOLD);
-        g.drawString(font, titleText, x0 + (PW - font.width(titleText)) / 2, y0 + 8, 0xFFFFFFFF, true);
-        g.drawString(font, "x", x0 + PW - 14, y0 + 8, 0xFFDDDDDD, true);
+        g.text(font, titleText, x0 + (PW - font.width(titleText)) / 2, y0 + 8, 0xFFFFFFFF, true);
+        g.text(font, "x", x0 + PW - 14, y0 + 8, 0xFFDDDDDD, true);
         hits.add(new Hit(x0 + PW - 22, y0, x0 + PW, y0 + HEADER_H, () -> setOpen(false)));
         if (detail) {
-            g.drawString(font, "< Back", x0 + 8, y0 + 8, LINK, true);
+            g.text(font, "< Back", x0 + 8, y0 + 8, LINK, true);
             hits.add(new Hit(x0, y0, x0 + 50, y0 + HEADER_H, () -> leaveDetail()));
         } else {
             int tx = x0 + PAD, ty = y0 + HEADER_H + 4;
@@ -671,7 +671,7 @@ public final class WarMenu {
                 boolean hover = mx >= tx && mx < tx + w && my >= ty && my < ty + 15;
                 g.fill(tx, ty, tx + w, ty + 15, i == tab ? 0xFF5A2020 : hover ? 0xFF2A2A2A : 0xFF1A1A1A);
                 if (i == tab) g.fill(tx, ty + 14, tx + w, ty + 15, accent);
-                g.drawString(font, TABS[i], tx + 7, ty + 4, i == tab ? 0xFFFFFFFF : MUTED, true);
+                g.text(font, TABS[i], tx + 7, ty + 4, i == tab ? 0xFFFFFFFF : MUTED, true);
                 hits.add(new Hit(tx, ty, tx + w, ty + 15, () -> selectTab(t)));
                 tx += w + 4;
             }
@@ -700,7 +700,7 @@ public final class WarMenu {
                 y += 3;
                 g.fill(x0 + PAD - 3, y - 1, x0 + PAD, y + 10, 0xFF000000 | (line.swatch >= 0 ? line.swatch : 0xE05050));
                 x += 3;
-                g.drawString(font, Component.literal(Fit.bold(font, line.text, x0 + PW - PAD - x)).withStyle(ChatFormatting.BOLD), x, y + 1, line.rgb, true);
+                g.text(font, Component.literal(Fit.bold(font, line.text, x0 + PW - PAD - x)).withStyle(ChatFormatting.BOLD), x, y + 1, line.rgb, true);
                 y += line.height() - 3;
                 continue;
             }
@@ -711,8 +711,8 @@ public final class WarMenu {
             int w = font.width(shown);
             boolean hover = line.action != null && (line.fold() ? mx >= x0 + PAD && mx < x0 + PW - PAD : mx >= x && mx < x + w) && my >= y - 1 && my < y + LINE - 1;
             int color = line.action != null ? (hover ? 0xFFFFFFFF : line.fold() ? TEXT : LINK) : line.rgb;
-            g.drawString(font, shown, x, y + 1, color, line.action != null || color == TEXT);
-            if (line.tail() != null) g.drawString(font, line.tail(), x0 + PW - PAD - font.width(line.tail()), y + 1, line.action != null && line.fold() ? MUTED : 0xFFD8C080, false);
+            g.text(font, shown, x, y + 1, color, line.action != null || color == TEXT);
+            if (line.tail() != null) g.text(font, line.tail(), x0 + PW - PAD - font.width(line.tail()), y + 1, line.action != null && line.fold() ? MUTED : 0xFFD8C080, false);
             if (line.action != null) {
                 if (line.fold()) {
                     hits.add(new Hit(x0 + PAD - 2, y - 1, x0 + PW - PAD + 2, y + LINE, line.action));
@@ -729,14 +729,14 @@ public final class WarMenu {
             boolean canUp = first > 0, canDown = last < lines.size();
             String up = "[ Up ]", down = "[ Down ]";
             int dx = x0 + PAD + font.width(up) + 10;
-            g.drawString(font, up, x0 + PAD, fy + 1, canUp ? LINK : 0xFF555555, false);
-            g.drawString(font, down, dx, fy + 1, canDown ? LINK : 0xFF555555, false);
+            g.text(font, up, x0 + PAD, fy + 1, canUp ? LINK : 0xFF555555, false);
+            g.text(font, down, dx, fy + 1, canDown ? LINK : 0xFF555555, false);
             int stepUp = Math.max(1, last - first - 2);
             hits.add(new Hit(x0 + PAD - 2, fy - 2, x0 + PAD + font.width(up) + 2, fy + LINE + 2, () -> scroll = Math.max(0, scroll - stepUp)));
             int nextFirst = Math.min(maxScroll, Math.max(first + 1, last - 1));
             hits.add(new Hit(dx - 2, fy - 2, dx + font.width(down) + 2, fy + LINE + 2, () -> scroll = nextFirst));
             String where = (first + 1) + "-" + last + " / " + lines.size();
-            g.drawString(font, where, x0 + PW - PAD - font.width(where), fy + 1, MUTED, false);
+            g.text(font, where, x0 + PW - PAD - font.width(where), fy + 1, MUTED, false);
         }
     }
 }

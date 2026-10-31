@@ -4,39 +4,56 @@ name: Build
 
 on:
   push:
-    branches: [claude/dev, main]
+    branches: [claude/dev, claude/mc-26.2, main]
     tags: ['v*']
   pull_request:
   workflow_dispatch:
 
 jobs:
   mod:
-    name: Fabric mod
+    name: Fabric mod ${{ matrix.mc }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { mc: '26.1.2', range: '>=26.1 <26.2', old_xaero: 'true' }
+          - { mc: '26.2',   range: '>=26.2 <26.3', old_xaero: 'false' }
+          - { mc: '26.3',   range: '>=26.3 <26.4', old_xaero: 'false' }
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 21
+          java-version: 25
       - uses: gradle/actions/setup-gradle@v4
-      # The mod is compiled against Xaero's World Map and Minimap (they are not part of the repository and are not put in the jar):
-      # the newest Fabric build of each for the Minecraft version in gradle.properties, from Modrinth.
-      - name: Fetch Xaero's jars (compile only)
+      - name: Build
+        shell: bash
         run: |
-          mc=$(grep '^minecraft_version=' gradle.properties | cut -d= -f2)
+          set +e
+          mc="${{ matrix.mc }}"
           mkdir -p libs
+          # compiled against Xaero's World Map and Minimap and the Fabric API of that Minecraft version (looked up on Modrinth; not part of the jar)
           for project in xaeros-world-map xaeros-minimap; do
-            url=$(curl -fsS "https://api.modrinth.com/v2/project/$project/version?loaders=%5B%22fabric%22%5D&game_versions=%5B%22$mc%22%5D" \
-              | python3 -c "import json,sys; v=json.load(sys.stdin); print(v[0]['files'][0]['url'])")
-            echo "$project: $url"
+            url=$(curl -fsS "https://api.modrinth.com/v2/project/$project/version?loaders=%5B%22fabric%22%5D&game_versions=%5B%22$mc%22%5D" | python3 -c "import json,sys; v=json.load(sys.stdin); print(v[0]['files'][0]['url'])" 2>/dev/null)
+            if [ -z "$url" ]; then echo "::error title=No $project for $mc::no Fabric build on Modrinth"; exit 1; fi
             curl -fsSL -o "libs/$project.jar" "$url"
+            unzip -j -o -q "libs/$project.jar" "META-INF/jars/*.jar" -d libs || true
           done
-      - run: chmod +x gradlew
-      - run: ./gradlew build --no-daemon
+          api=$(curl -fsS "https://api.modrinth.com/v2/project/fabric-api/version?loaders=%5B%22fabric%22%5D&game_versions=%5B%22$mc%22%5D" | python3 -c "import json,sys; v=json.load(sys.stdin); print(v[0]['version_number'])" 2>/dev/null)
+          if [ -z "$api" ]; then echo "::error title=No Fabric API for $mc::none on Modrinth"; exit 1; fi
+          echo "fabric api $api"
+          chmod +x gradlew
+          ./gradlew build --no-daemon -Pminecraft_version=$mc -Pfabric_api_version=$api "-Pmc_range=${{ matrix.range }}" -Pold_xaero=${{ matrix.old_xaero }} > build.log 2>&1
+          code=$?
+          if [ $code -ne 0 ]; then
+            echo "::error title=Gradle failed on $mc::$(grep -E 'error:|What went wrong' -A2 build.log | grep -v '^--' | cut -c1-230 | sed 's#.*territories/##' | head -200 | sed ':a;N;$!ba;s/\n/%0A/g')"
+          fi
+          cat build.log | tail -5
+          exit $code
       - uses: actions/upload-artifact@v4
         with:
-          name: cumania-territories
+          name: cumania-territories-${{ matrix.mc }}
           path: |
             build/libs/*.jar
             !build/libs/*-sources.jar
@@ -77,7 +94,7 @@ jobs:
   # (gradle.properties) has no release yet: it then creates the tag itself. Notes: .github/release-notes/vX.Y.Z.md when it exists.
   release:
     name: Release
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/claude/mc-26.2' || startsWith(github.ref, 'refs/tags/v'))
     needs: [mod, plugin]
     runs-on: ubuntu-latest
     permissions:

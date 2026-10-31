@@ -3,7 +3,7 @@ package com.cumania.territories.compat;
 import com.cumania.territories.TerritoryManager;
 import com.cumania.territories.data.WarMarkers;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.MultiBufferSource;
+import xaero.lib.client.graphics.XaeroBufferProvider;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
 import xaero.map.element.MapElementGraphics;
@@ -82,17 +82,17 @@ public final class WarMarkerRenderer extends ElementRenderer<WarMarkers.Marker, 
         @Override public boolean isInteractable(ElementRenderLocation location, WarMarkers.Marker m) { return false; }
     }
 
-    @Override public void preRender(ElementRenderInfo info, MultiBufferSource.BufferSource buffers, MultiTextureRenderTypeRendererProvider providers, boolean shadow) {
+    @Override public void preRender(ElementRenderInfo info, XaeroBufferProvider buffers, MultiTextureRenderTypeRendererProvider providers, boolean shadow) {
         context.dimension = info.mapDimension;
     }
 
-    @Override public void postRender(ElementRenderInfo info, MultiBufferSource.BufferSource buffers, MultiTextureRenderTypeRendererProvider providers, boolean shadow) {}
+    @Override public void postRender(ElementRenderInfo info, XaeroBufferProvider buffers, MultiTextureRenderTypeRendererProvider providers, boolean shadow) {}
 
     @Override public void renderElementShadow(WarMarkers.Marker m, boolean hovered, float optionalScale, double partialX, double partialY, ElementRenderInfo info,
-                                              MapElementGraphics graphics, MultiBufferSource.BufferSource buffers, MultiTextureRenderTypeRendererProvider providers) {}
+                                              MapElementGraphics graphics, XaeroBufferProvider buffers, MultiTextureRenderTypeRendererProvider providers) {}
 
     @Override public boolean renderElement(WarMarkers.Marker m, boolean hovered, double optionalDepth, float optionalScale, double partialX, double partialY, ElementRenderInfo info,
-                                           MapElementGraphics graphics, MultiBufferSource.BufferSource buffers, MultiTextureRenderTypeRendererProvider providers) {
+                                           MapElementGraphics graphics, XaeroBufferProvider buffers, MultiTextureRenderTypeRendererProvider providers) {
         long t = System.currentTimeMillis();
         switch (m.kind()) {
             case SWORD -> {

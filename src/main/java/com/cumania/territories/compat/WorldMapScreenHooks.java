@@ -12,7 +12,7 @@ public final class WorldMapScreenHooks {
     public static void register() {
         ScreenEvents.AFTER_INIT.register((client, screen, scaledWidth, scaledHeight) -> {
             if (screen.getClass().getName().equals("xaero.map.gui.GuiMap")) {
-                ScreenEvents.afterRender(screen).register((s, graphics, mouseX, mouseY, tickDelta) -> { CountryPanel.render(graphics, mouseX, mouseY); WarMenu.render(graphics, mouseX, mouseY); SettingsMenu.render(graphics, mouseX, mouseY); });
+                ScreenEvents.afterExtract(screen).register((s, graphics, mouseX, mouseY, tickDelta) -> { CountryPanel.render(graphics, mouseX, mouseY); WarMenu.render(graphics, mouseX, mouseY); SettingsMenu.render(graphics, mouseX, mouseY); });
                 // the wheel over the war menu scrolls the menu, not the map's zoom
                 // a press on our buttons or menus is ours: Xaero must not start dragging the map (the sliders are dragged)
                 ScreenMouseEvents.allowMouseClick(screen).register((s, click) -> {

@@ -11,7 +11,7 @@ import com.cumania.territories.data.TerritoryIndex;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 
 import java.time.Instant;
@@ -101,7 +101,7 @@ public final class CountryPanel {
     private static boolean goTo(int mx, int my) {
         for (GoHit hit : goHits) {
             if (mx >= hit.x0 && mx < hit.x1 && my >= hit.y0 && my < hit.y1) {
-                if (Minecraft.getInstance().screen instanceof CameraTarget camera) camera.cumania$goTo(hit.target.x, hit.target.z, TerritoryManager.config().goToZoom);
+                if (Screens.current() instanceof CameraTarget camera) camera.cumania$goTo(hit.target.x, hit.target.z, TerritoryManager.config().goToZoom);
                 return true;
             }
         }
@@ -119,7 +119,7 @@ public final class CountryPanel {
     private record Block(String label, List<String> value) implements Row {}
     private record Section(String title, int rgb) implements Row {}
 
-    public static void render(GuiGraphics g, int mouseXNow, int mouseYNow) {
+    public static void render(GuiGraphicsExtractor g, int mouseXNow, int mouseYNow) {
         mouseX = mouseXNow; mouseY = mouseYNow;
         TerritoryIndex index = TerritoryManager.index();
         int c = TerritoryManager.selected();
@@ -156,7 +156,7 @@ public final class CountryPanel {
         FlagCache.Flag flag = null;
         if (c >= 0 && TerritoryManager.index().countryData(c).info != null) {
             String rel = TerritoryManager.index().countryData(c).info.get("flag");
-            String url = TerritoryManager.config().url;
+            String url = TerritoryManager.mapUrl();
             if (rel != null && !rel.isBlank() && url != null && url.contains("/")) flag = FlagCache.get(url.substring(0, url.lastIndexOf('/') + 1) + rel);
         }
 
@@ -191,8 +191,8 @@ public final class CountryPanel {
         g.fill(x0, y0 + HEADER_H - 1, x0 + boxW, y0 + HEADER_H, accent);
 
         Component titleText = Component.literal(Fit.bold(font, title, boxW - 34)).withStyle(ChatFormatting.BOLD);
-        g.drawString(font, titleText, x0 + (boxW - font.width(titleText)) / 2, y0 + 7, 0xFFFFFFFF, true);
-        g.drawString(font, "x", x0 + boxW - 12, y0 + 7, 0xFFCCCCCC, true);
+        g.text(font, titleText, x0 + (boxW - font.width(titleText)) / 2, y0 + 7, 0xFFFFFFFF, true);
+        g.text(font, "x", x0 + boxW - 12, y0 + 7, 0xFFCCCCCC, true);
 
         int y = y0 + HEADER_H + 5;
         if (flag != null) {
@@ -203,7 +203,7 @@ public final class CountryPanel {
         }
         nameHits.clear();
         y = drawRows(g, font, rows, x0, boxW, y, true);
-        if (cut) g.drawString(font, "...", x0 + PAD, y, MUTED, false);
+        if (cut) g.text(font, "...", x0 + PAD, y, MUTED, false);
 
         String who = selectedPlayer;
         if (who != null) renderPlayer(g, font, mc, who, Math.max(x0, Math.min(x0 + boxW + GAP, mc.getWindow().getGuiScaledWidth() - MENU_W - 4)), y0, titleRgb, available); else { menuW = 0; goHits.clear(); }
@@ -228,31 +228,31 @@ public final class CountryPanel {
         return lines;
     }
 
-    private static int drawRows(GuiGraphics g, Font font, List<Row> rows, int x0, int boxW, int y, boolean recordHits) {
+    private static int drawRows(GuiGraphicsExtractor g, Font font, List<Row> rows, int x0, int boxW, int y, boolean recordHits) {
         for (Row row : rows) {
             if (row instanceof Section s) {
                 y += 2;
                 g.fill(x0 + PAD, y, x0 + boxW - PAD, y + 1, 0xFF3A3A3A);
-                g.drawString(font, Fit.text(font, s.title().toUpperCase(), boxW - 2 * PAD), x0 + PAD, y + 4, 0xFF000000 | TerritoryColors.lighten(s.rgb() == 0 ? 0xAAAAAA : s.rgb(), 0.35), true);
+                g.text(font, Fit.text(font, s.title().toUpperCase(), boxW - 2 * PAD), x0 + PAD, y + 4, 0xFF000000 | TerritoryColors.lighten(s.rgb() == 0 ? 0xAAAAAA : s.rgb(), 0.35), true);
                 y += LINE + 4;
             } else if (row instanceof Pair p) {
-                g.drawString(font, Fit.text(font, p.label().toUpperCase(), LABEL_W - 4), x0 + PAD, y, MUTED, false);
-                g.drawString(font, Fit.text(font, p.value(), boxW - 2 * PAD - LABEL_W), x0 + PAD + LABEL_W, y, TEXT, true);
+                g.text(font, Fit.text(font, p.label().toUpperCase(), LABEL_W - 4), x0 + PAD, y, MUTED, false);
+                g.text(font, Fit.text(font, p.value(), boxW - 2 * PAD - LABEL_W), x0 + PAD + LABEL_W, y, TEXT, true);
                 y += LINE + 2;
             } else if (row instanceof Block b) {
-                if (!b.label().isEmpty()) { g.drawString(font, Fit.text(font, b.label().toUpperCase(), boxW - 2 * PAD), x0 + PAD, y, MUTED, false); y += LINE; }
-                for (String part : b.value()) { g.drawString(font, Fit.text(font, part, boxW - 2 * PAD), x0 + PAD, y, TEXT, true); y += LINE; }
+                if (!b.label().isEmpty()) { g.text(font, Fit.text(font, b.label().toUpperCase(), boxW - 2 * PAD), x0 + PAD, y, MUTED, false); y += LINE; }
+                for (String part : b.value()) { g.text(font, Fit.text(font, part, boxW - 2 * PAD), x0 + PAD, y, TEXT, true); y += LINE; }
                 y += 2;
             } else if (row instanceof Go go) {
                 int top = y;
                 int width = 0;
                 for (String part : go.value()) width = Math.max(width, font.width(part));
                 boolean hover = mouseX >= x0 + PAD && mouseX < x0 + PAD + width && mouseY >= top - 1 && mouseY < top + go.value().size() * LINE - 1;
-                for (String part : go.value()) { g.drawString(font, Fit.text(font, part, boxW - 2 * PAD), x0 + PAD, y, hover ? 0xFFFFFFFF : 0xFF8FD0FF, true); y += LINE; }
+                for (String part : go.value()) { g.text(font, Fit.text(font, part, boxW - 2 * PAD), x0 + PAD, y, hover ? 0xFFFFFFFF : 0xFF8FD0FF, true); y += LINE; }
                 if (!recordHits) goHits.add(new GoHit(x0 + PAD, top - 1, x0 + PAD + width, y - 1, go.target()));
                 y += 2;
             } else if (row instanceof Names n) {
-                g.drawString(font, Fit.text(font, n.label().toUpperCase(), boxW - 2 * PAD), x0 + PAD, y, MUTED, false);
+                g.text(font, Fit.text(font, n.label().toUpperCase(), boxW - 2 * PAD), x0 + PAD, y, MUTED, false);
                 y += LINE;
                 for (List<String> line : n.lines()) {
                     int x = x0 + PAD;
@@ -264,11 +264,11 @@ public final class CountryPanel {
                         boolean hover = mouseX >= x && mouseX < x + w && mouseY >= y - 1 && mouseY < y + LINE - 1;
                         boolean open = name.equals(selectedPlayer);
                         if (online) g.fill(x, y + 2, x + 4, y + 6, 0xFF3CD65A);
-                        g.drawString(font, shown, x + (online ? ONLINE_DOT : 0), y, hover || open ? 0xFFFFFFFF : 0xFF8FD0FF, true);
+                        g.text(font, shown, x + (online ? ONLINE_DOT : 0), y, hover || open ? 0xFFFFFFFF : 0xFF8FD0FF, true);
                         if (hover || open) g.fill(x, y + 9, x + w, y + 10, 0xFFFFFFFF);
                         if (recordHits) nameHits.add(new NameHit(x, y - 1, x + w, y + LINE - 1, name));
                         x += w;
-                        if (i < line.size() - 1 || line != n.lines().get(n.lines().size() - 1)) { g.drawString(font, ",", x, y, MUTED, false); x += font.width(", "); }
+                        if (i < line.size() - 1 || line != n.lines().get(n.lines().size() - 1)) { g.text(font, ",", x, y, MUTED, false); x += font.width(", "); }
                     }
                     y += LINE;
                 }
@@ -301,7 +301,7 @@ public final class CountryPanel {
     }
 
     /** The player card beside the country panel: skin, in-game name, where from, last join, affiliations and notes - all from the site's records. */
-    private static void renderPlayer(GuiGraphics g, Font font, Minecraft mc, String who, int x0, int y0, int rgb, int available) {
+    private static void renderPlayer(GuiGraphicsExtractor g, Font font, Minecraft mc, String who, int x0, int y0, int rgb, int available) {
         TerritoryFile.Player p = TerritoryManager.index().player(who);
         int innerW = MENU_W - 2 * PAD;
         goHits.clear();
@@ -354,7 +354,7 @@ public final class CountryPanel {
         } else rows.add(new Block("", PanelModel.wrap("No record of this player on the site.", innerW, font::width)));
 
         SkinCache.Figure figure = null;
-        String url = TerritoryManager.config().url;
+        String url = TerritoryManager.mapUrl();
         if (p != null && p.skin != null && !p.skin.isBlank() && url != null && url.contains("/")) figure = SkinCache.get(url.substring(0, url.lastIndexOf('/') + 1) + p.skin);
         int scale = figure == null ? 0 : 3;
         int linkH = LINE + 8;
@@ -371,8 +371,8 @@ public final class CountryPanel {
         g.fill(x0, y0, x0 + menuW, y0 + HEADER_H, 0xFF000000 | dim(rgb));
         g.fill(x0, y0 + HEADER_H - 1, x0 + menuW, y0 + HEADER_H, accent);
         Component titleText = Component.literal(Fit.bold(font, who, menuW - 34)).withStyle(ChatFormatting.BOLD);
-        g.drawString(font, titleText, x0 + (menuW - font.width(titleText)) / 2, y0 + 7, 0xFFFFFFFF, true);
-        g.drawString(font, "x", x0 + menuW - 12, y0 + 7, 0xFFCCCCCC, true);
+        g.text(font, titleText, x0 + (menuW - font.width(titleText)) / 2, y0 + 7, 0xFFFFFFFF, true);
+        g.text(font, "x", x0 + menuW - 12, y0 + 7, 0xFFCCCCCC, true);
 
         int y = y0 + HEADER_H + 5;
         if (figure != null) {
@@ -390,13 +390,13 @@ public final class CountryPanel {
             y += SkinCache.H * scale + 6;
         }
         y = drawRows(g, font, rows, x0, menuW, y, false);
-        if (cut) { g.drawString(font, "...", x0 + PAD, y, MUTED, false); y += LINE; }
+        if (cut) { g.text(font, "...", x0 + PAD, y, MUTED, false); y += LINE; }
         y += 4;
         linkY0 = y - 2; linkY1 = y + LINE + 2;
         boolean copied = System.currentTimeMillis() - copiedAt < 2500;
         boolean hover = mouseX >= x0 && mouseX <= x0 + menuW && mouseY >= linkY0 && mouseY < linkY1;
         g.fill(x0 + PAD, linkY0 - 2, x0 + menuW - PAD, linkY0 - 1, 0xFF3A3A3A);
-        g.drawString(font, copied ? "Link copied!" : "Copy NameMC link", x0 + PAD, y, copied ? 0xFF7CFF7C : hover ? 0xFFFFFFFF : 0xFF8FD0FF, true);
+        g.text(font, copied ? "Link copied!" : "Copy NameMC link", x0 + PAD, y, copied ? 0xFF7CFF7C : hover ? 0xFFFFFFFF : 0xFF8FD0FF, true);
     }
 
     private static int bodyHeight(List<Row> rows) {
@@ -417,7 +417,7 @@ public final class CountryPanel {
     }
 
     /** The flag as plain rectangles: runs of the same colour on a row are one rectangle. */
-    private static void drawFlag(GuiGraphics g, FlagCache.Flag flag, int x, int y, int scale) {
+    private static void drawFlag(GuiGraphicsExtractor g, FlagCache.Flag flag, int x, int y, int scale) {
         int[] px = flag.argb();
         for (int row = 0; row < flag.h(); row++) {
             int col = 0;
