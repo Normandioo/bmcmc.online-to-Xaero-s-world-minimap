@@ -63,6 +63,8 @@ public final class WarFront {
     private final List<Hot> hot = new ArrayList<>();
     /** Units u -> neighbours that put u In Play (the site's "by"). */
     private final Map<Unit, Set<Unit>> putsInPlay = new HashMap<>();
+    /** Pairs of units joined only through an open Bridge or Strait, and pairs with a Connection of their own. A Bridge is never captured, so no front line is drawn across one. */
+    private final Set<String> bridgePairs = new HashSet<>(), directPairs = new HashSet<>();
     private int sides;
     private TerritoryFile.WarInfo war;
     private static volatile WarFront viewing;
@@ -270,7 +272,10 @@ public final class WarFront {
         if (g.hasNetwork) for (var e : g.putsInPlay.entrySet()) {
             Unit u = e.getKey();
             for (Unit v : e.getValue()) {
-                if (u.control == NEUTRAL || v.control == NEUTRAL || u.control == v.control || !drawn.add(pair(u, v))) continue;
+                if (u.control == NEUTRAL || v.control == NEUTRAL || u.control == v.control) continue;
+                String uv = pair(u, v);
+                if (g.bridgePairs.contains(uv) && !g.directPairs.contains(uv)) continue;   // only a Bridge or Strait joins them: nothing to capture there, no line
+                if (!drawn.add(uv)) continue;
                 TerritoryFile.Locality bestA = null, bestB = null;
                 double best = Double.MAX_VALUE;
                 for (var a : u.members) for (var b : v.members) {
@@ -295,7 +300,7 @@ public final class WarFront {
         Map<String, List<String>> linkEnds = new HashMap<>();
         for (String[] e : edges) {
             Unit a = unitByCity.get(e[0]), b = unitByCity.get(e[1]);
-            if (a != null && b != null) link(a, b, false);
+            if (a != null && b != null) { link(a, b, false); if (a != b) directPairs.add(pair(a, b)); }
             else if (a != null && linkOpen.containsKey(e[1])) linkEnds.computeIfAbsent(e[1], k -> new ArrayList<>()).add(e[0]);
             else if (b != null && linkOpen.containsKey(e[0])) linkEnds.computeIfAbsent(e[0], k -> new ArrayList<>()).add(e[1]);
         }
@@ -303,7 +308,11 @@ public final class WarFront {
             boolean open = bridges.getOrDefault(e.getKey(), linkOpen.getOrDefault(e.getKey(), true));
             if (!open) continue;
             List<String> ends = e.getValue();
-            for (int i = 0; i < ends.size(); i++) for (int j = i + 1; j < ends.size(); j++) link(unitByCity.get(ends.get(i)), unitByCity.get(ends.get(j)), false);
+            for (int i = 0; i < ends.size(); i++) for (int j = i + 1; j < ends.size(); j++) {
+                Unit a = unitByCity.get(ends.get(i)), b = unitByCity.get(ends.get(j));
+                link(a, b, false);
+                if (a != null && b != null && a != b) bridgePairs.add(pair(a, b));
+            }
         }
 
         if (war.shortCircuit == null || war.shortCircuit) shortCircuits(war);
