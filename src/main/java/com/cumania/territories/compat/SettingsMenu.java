@@ -115,7 +115,7 @@ public final class SettingsMenu {
             y = toggle(g, font, x0, y, "Grey out others in wars", c.warGreyOthers, () -> { c.warGreyOthers = !c.warGreyOthers; changed(true); });
             y = toggle(g, font, x0, y, "Live war control", c.liveWar, () -> { c.liveWar = !c.liveWar; changed(false); WarMenu.liveChanged(); });
         } else {
-            y = choice(g, font, x0, y, "Map", TerritoryManager.mapName(), TerritoryManager::nextMap);
+            y = choice(g, font, x0, y, "Map", TerritoryManager.mapName() + (TerritoryManager.index().isEmpty() ? " (not loaded)" : ""), TerritoryManager::nextMap);
             y = stepper(g, font, x0, y, "Territory colour", c.fillAlpha, v -> c.fillAlpha = v);
             y = stepper(g, font, x0, y, "Borders", c.borderAlpha, v -> c.borderAlpha = v);
             y = toggle(g, font, x0, y, "Show territories", c.enabled, () -> { TerritoryManager.toggle(); });
