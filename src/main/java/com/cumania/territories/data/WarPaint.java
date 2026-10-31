@@ -12,10 +12,14 @@ public final class WarPaint {
     private WarPaint() {}
 
     /** countryRgb[country] is RGB or -1 (greyed); provinceRgb overrides single provinces. */
+    /** eventZones: the war is between nations that have cities but no land on the political map (an event like Cumania IV's), so the capture limits are its territory and are always drawn. */
     /** zoneRgb: the colour of each capture limit (by "name(country)" in lower case) that a war's view paints by who holds the city. */
-    public record Paint(int[] countryRgb, Map<Integer, Integer> provinceRgb, Map<Integer, int[]> provinceBounds, Map<String, Integer> zoneRgb, FrontLines front, FrontLines inner) {
+    public record Paint(int[] countryRgb, Map<Integer, Integer> provinceRgb, Map<Integer, int[]> provinceBounds, Map<String, Integer> zoneRgb, FrontLines front, FrontLines inner, boolean eventZones) {
         public Paint(int[] countryRgb, Map<Integer, Integer> provinceRgb, Map<Integer, int[]> provinceBounds, Map<String, Integer> zoneRgb) {
-            this(countryRgb, provinceRgb, provinceBounds, zoneRgb, FrontLines.EMPTY, FrontLines.EMPTY);
+            this(countryRgb, provinceRgb, provinceBounds, zoneRgb, FrontLines.EMPTY, FrontLines.EMPTY, false);
+        }
+        public Paint(int[] countryRgb, Map<Integer, Integer> provinceRgb, Map<Integer, int[]> provinceBounds, Map<String, Integer> zoneRgb, FrontLines front, FrontLines inner) {
+            this(countryRgb, provinceRgb, provinceBounds, zoneRgb, front, inner, false);
         }
     }
 
@@ -39,7 +43,7 @@ public final class WarPaint {
         java.util.List<int[]> boxes = new java.util.ArrayList<>();
         addProvinceBoxes(old, next, boxes);
         addProvinceBoxes(next, old, boxes);
-        if (com.cumania.territories.TerritoryManager.config().showCaptureLimits) boxes.addAll(index.limits().boxesOf(changedZones(old, next)));
+        if (com.cumania.territories.TerritoryManager.config().showCaptureLimits || (next != null && next.eventZones()) || (old != null && old.eventZones())) boxes.addAll(index.limits().boxesOf(changedZones(old, next)));
         FrontLines fa = old == null ? FrontLines.EMPTY : old.front(), fb = next == null ? FrontLines.EMPTY : next.front();
         if (!fa.sameAs(fb)) { boxes.addAll(fa.boxes()); boxes.addAll(fb.boxes()); }
         FrontLines ia = old == null ? FrontLines.EMPTY : old.inner(), ib = next == null ? FrontLines.EMPTY : next.inner();
@@ -126,7 +130,10 @@ public final class WarPaint {
         // the quiet network inside each side: dotted grey
         List<FrontLines.Seg> quiet = new java.util.ArrayList<>();
         for (WarFront.Hot h : WarFront.of(index, war).innerLines()) quiet.add(new FrontLines.Seg(h.a().x, h.a().z, h.b().x, h.b().z, INNER, INNER));
-        return new Paint(rgb, provinces, bounds, zones, FrontLines.build(segs), FrontLines.build(quiet, true));
+        // nations with cities but no land on the political map: the capture limits are their territory
+        boolean event = !zones.isEmpty() && !sideOf.isEmpty();
+        for (String c : sideOf.keySet()) if (index.countryIndex(c) >= 0) { event = false; break; }
+        return new Paint(rgb, provinces, bounds, zones, FrontLines.build(segs), FrontLines.build(quiet, true), event);
     }
 
     static int hotColor(List<TerritoryFile.Side> sides, int control) {
