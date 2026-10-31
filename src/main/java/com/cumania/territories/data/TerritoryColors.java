@@ -114,7 +114,11 @@ public final class TerritoryColors {
 
     private static final int LIMIT_RGB = 0xFFFFFF, LIMIT_ALPHA = 170, SHADOW_ALPHA = 170;
 
-    private static boolean limitsOn() { return com.cumania.territories.TerritoryManager.config().showCaptureLimits; }
+    private static boolean limitsOn() {
+        if (com.cumania.territories.TerritoryManager.config().showCaptureLimits) return true;
+        WarPaint.Paint paint = WarPaint.current();
+        return paint != null && paint.eventZones();   // an event war's territory is its capture limits
+    }
 
     /** Whether the chunk has anything for the map to paint: territory, or (with capture limits on) a limit's outline. */
     public static boolean chunkHasAnything(TerritoryIndex index, int cx, int cz) {
