@@ -74,7 +74,13 @@ public final class LocalityRenderer extends ElementRenderer<TerritoryFile.Locali
             List<TerritoryFile.Locality> list = new ArrayList<>();
             if (TerritoryManager.active() && config.showLocalities && TerritoryManager.inDimension(context.dimension)) {
                 double scale = effectiveScale(context);
-                for (TerritoryFile.Locality l : TerritoryManager.index().localities()) if (scale >= ICON_FROM[rank(l)] || Focus.is(l)) list.add(l);
+                var index = TerritoryManager.index();
+                var paint = com.cumania.territories.data.WarPaint.current();
+                boolean eventWar = paint != null && paint.eventZones();   // an event war's cities show in its war view only
+                for (TerritoryFile.Locality l : index.localities()) {
+                    if (!eventWar && index.landless(l.country)) continue;
+                    if (scale >= ICON_FROM[rank(l)] || Focus.is(l)) list.add(l);
+                }
             }
             visible = list; next = 0;
         }
