@@ -49,6 +49,8 @@ public final class DynmapClient {
     private static final AtomicBoolean busyPlayers = new AtomicBoolean(), busyMarkers = new AtomicBoolean();
     private static volatile Runnable onMarkers = () -> {};
 
+    /** The map changed: forget what the other world's dynmap said. */
+    public static void reset() { players = List.of(); playersAt = 0; markers = List.of(); markersAt = 0; timestamp = 0; }
     public static List<Online> players() { return players; }
     public static List<Marker> markers() { return markers; }
     public static long markersAt() { return markersAt; }
@@ -111,7 +113,7 @@ public final class DynmapClient {
         return url == null || url.isBlank() ? null : url.endsWith("/") ? url : url + "/";
     }
 
-    private static String world() { return URLEncoder.encode(TerritoryManager.config().dynmapWorld, StandardCharsets.UTF_8); }
+    private static String world() { return URLEncoder.encode(TerritoryManager.dynmapWorld(), StandardCharsets.UTF_8); }
 
     private static void get(String url, java.util.function.Consumer<String> ok, Runnable failed, AtomicBoolean busy) {
         if (!busy.compareAndSet(false, true)) return;

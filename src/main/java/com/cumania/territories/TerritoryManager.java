@@ -38,12 +38,83 @@ public final class TerritoryManager {
         configFile = configDir.resolve("cumania_territories.json");
         cacheFile = configDir.resolve("cumania_territories_cache.json");
         config = Config.load(configFile);
+        if (config.serverMaps == null) config.serverMaps = new java.util.HashMap<>();
+        cacheFile = cacheFor(config.map);
         // Show the last download immediately, then check the site
         try { if (Files.exists(cacheFile)) apply(TerritoryFile.parse(Files.readString(cacheFile)), false); }
         catch (IOException | RuntimeException e) { CumaniaTerritories.LOGGER.warn("Ignoring unreadable cache", e); }
         scheduler = Executors.newSingleThreadScheduledExecutor(r -> { Thread t = new Thread(r, "cumania-territories"); t.setDaemon(true); return t; });
         rescheduleRefresh();
         reload();
+    }
+
+    // ---- the site's maps (Gaia, Cumania IV): each has its own territories.json in its own folder, and its own world on the dynmap ----
+
+    /** key, name, folder on the site, dynmap world (Gaia's is the one in the config). */
+    private static final String[][] MAPS = {{"gaia", "Gaia", "gaia/", null}, {"cumania", "Cumania IV", "cumania4/", "Cumania4"}};
+
+    private static String[] mapInfo(String key) {
+        for (String[] m : MAPS) if (m[0].equalsIgnoreCase(key)) return m;
+        return MAPS[0];
+    }
+    public static String mapName() { return mapInfo(config.map)[1]; }
+
+    /** The territories file of the map being shown (the config's url is Gaia's; the other maps sit in a sibling folder). */
+    public static String mapUrl() {
+        String url = config.url, folder = mapInfo(config.map)[2];
+        if (url == null || folder.equals("gaia/")) return url;
+        int at = url.lastIndexOf("gaia/");
+        return at < 0 ? url : url.substring(0, at) + folder + url.substring(at + "gaia/".length());
+    }
+
+    public static String dynmapWorld() {
+        String world = mapInfo(config.map)[3];
+        return world != null ? world : config.dynmapWorld;
+    }
+
+    private static Path cacheFor(String key) {
+        Path dir = configFile.getParent();
+        return "gaia".equalsIgnoreCase(key) ? dir.resolve("cumania_territories_cache.json") : dir.resolve("cumania_territories_cache_" + key + ".json");
+    }
+
+    /** Next map in the list (the settings button). Remembered for the server you are on. */
+    public static void nextMap() {
+        for (int i = 0; i < MAPS.length; i++) if (MAPS[i][0].equalsIgnoreCase(config.map)) { chooseMap(MAPS[(i + 1) % MAPS.length][0], true); return; }
+        chooseMap(MAPS[0][0], true);
+    }
+
+    /** Switches to a map: nothing of the old one stays on screen. */
+    public static void chooseMap(String key, boolean remember) {
+        String wanted = mapInfo(key)[0];
+        String ip = currentServer();
+        if (remember && ip != null) config.serverMaps.put(ip, wanted);
+        if (wanted.equalsIgnoreCase(config.map)) { if (remember) saveConfig(); return; }
+        config.map = wanted;
+        saveConfig();
+        cacheFile = cacheFor(wanted);
+        index = TerritoryIndex.EMPTY;
+        paintedFingerprint = 0;
+        selected = -1;
+        generated = "";
+        com.cumania.territories.data.WarPaint.set(null);
+        com.cumania.territories.data.WarMarkers.clear();
+        com.cumania.territories.data.DynmapClient.reset();
+        Minecraft.getInstance().execute(() -> { com.cumania.territories.compat.CountryPanel.clear(); if (FabricLoader.getInstance().isModLoaded("xaeroworldmap")) com.cumania.territories.compat.WarMenu.close(); });
+        try { if (Files.exists(cacheFile)) apply(TerritoryFile.parse(Files.readString(cacheFile)), true); else changed(); }
+        catch (IOException | RuntimeException e) { changed(); }
+        reload();
+    }
+
+    /** On joining a server: the map chosen there last time, if any. */
+    public static void onJoin() {
+        String ip = currentServer();
+        String key = ip == null ? null : config.serverMaps.get(ip);
+        if (key != null) chooseMap(key, false);
+    }
+
+    private static String currentServer() {
+        var data = Minecraft.getInstance().getCurrentServer();
+        return data == null || data.ip == null ? null : data.ip.toLowerCase();
     }
 
     private static void rescheduleRefresh() {
@@ -85,7 +156,7 @@ public final class TerritoryManager {
 
     /** Downloads the file in the background and swaps it in if it parses. Safe to call from any thread. */
     public static void reload() {
-        String url = config.url;
+        String url = mapUrl();
         if (url == null || url.isBlank() || url.contains("YOUR-SITE")) {
             CumaniaTerritories.LOGGER.warn("Set \"url\" in {} to your site's territories.json", configFile);
             return;

@@ -47,7 +47,7 @@ public final class PlayerRenderer extends ElementRenderer<DynmapClient.Online, P
         int nation = index.nationOfPlayer(p.siteName());
         if (nation < 0) return null;
         var info = index.countryData(nation).info;
-        String rel = info == null ? null : info.get("flag"), base = TerritoryManager.config().url;
+        String rel = info == null ? null : info.get("flag"), base = TerritoryManager.mapUrl();
         if (rel == null || rel.isBlank() || base == null || !base.contains("/")) return null;
         String url = base.substring(0, base.lastIndexOf('/') + 1) + rel;
         Small known = smallFlags.get(url);
@@ -103,7 +103,7 @@ public final class PlayerRenderer extends ElementRenderer<DynmapClient.Online, P
             List<DynmapClient.Online> list = new ArrayList<>();
             if (config.showOnlinePlayers && context.dimension == TerritoryManager.dimension()) {
                 DynmapClient.wantPlayers();   // the map is open: keep the list fresh
-                if (DynmapClient.playersKnown()) for (var p : DynmapClient.players()) if (p.world().equalsIgnoreCase(config.dynmapWorld)) list.add(p);
+                if (DynmapClient.playersKnown()) for (var p : DynmapClient.players()) if (p.world().equalsIgnoreCase(TerritoryManager.dynmapWorld())) list.add(p);
             }
             PlayerTracker.update(list);
             visible = list; next = 0;
