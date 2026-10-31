@@ -13,8 +13,8 @@ public final class Config {
     public String url = "https://bmcmc.online/gaia/territories.json";
     /** Which of the site's maps is shown: "gaia" or "cumania" (Cumania IV, the event map). */
     public String map = "gaia";
-    /** The map chosen on each server (by its address), so joining it again picks that map by itself. */
-    public java.util.Map<String, String> serverMaps = new java.util.HashMap<>();
+    /** Follow the dynmap world you are in (Gaia and Cumania IV can be on the same server). Choosing a map by hand turns this off. */
+    public boolean autoMap = true;
     public boolean enabled = true;
     /** Which dimension the territories belong to: "overworld", "nether" or "end". */
     public String dimension = "overworld";

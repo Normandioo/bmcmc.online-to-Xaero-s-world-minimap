@@ -26,6 +26,12 @@ public final class WarEffects {
     private static void tick() {
         var config = TerritoryManager.config();
         var mc = net.minecraft.client.Minecraft.getInstance();
+        // Auto map: which dynmap world are you in? (dynmap lists every player with its world)
+        if (config.autoMap && TerritoryManager.index() != null && mc.player != null) {
+            DynmapClient.wantPlayers();
+            var me = DynmapClient.find(mc.player.getName().getString());
+            if (me != null) TerritoryManager.followWorld(me.world());
+        }
         // a war view on the map keeps its colours up to date too, even with the war menu hidden or the map closed
         boolean viewing = com.cumania.territories.data.WarPaint.current() != null;
         if (!TerritoryManager.active() || mc.player == null || !(config.showSwords || config.showFlags || viewing)) { WarMarkers.clear(); return; }
