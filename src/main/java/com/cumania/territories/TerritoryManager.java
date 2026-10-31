@@ -140,6 +140,22 @@ public final class TerritoryManager {
     public static Config config() { return config; }
     public static String generated() { return generated; }
 
+    /**
+     * Whether the territories belong to this dimension of Xaero's map. Gaia's are the overworld's. An event server (Cumania IV) may keep its world
+     * under a dimension of its own, so there any dimension that is not the Nether or the End counts.
+     */
+    public static boolean inDimension(ResourceKey<Level> key) {
+        if (key == null) return false;
+        if (!"gaia".equalsIgnoreCase(config.map)) return key != Level.NETHER && key != Level.END;
+        return key == dimension();
+    }
+
+    /** The dimension to ask Xaero's to redraw: the one you are in, when the map is not Gaia's. */
+    private static ResourceKey<Level> refreshDimension() {
+        var level = Minecraft.getInstance().level;
+        return !"gaia".equalsIgnoreCase(config.map) && level != null && inDimension(level.dimension()) ? level.dimension() : dimension();
+    }
+
     public static ResourceKey<Level> dimension() {
         return switch (config.dimension.toLowerCase()) {
             case "nether", "the_nether" -> Level.NETHER;
@@ -221,7 +237,7 @@ public final class TerritoryManager {
     public static void repaintRegions(java.util.List<int[]> regions) {
         version++;
         Minecraft.getInstance().execute(() -> {
-            if (FabricLoader.getInstance().isModLoaded("xaeroworldmap")) com.cumania.territories.compat.WorldMapBridge.refreshRegions(dimension(), regions);
+            if (FabricLoader.getInstance().isModLoaded("xaeroworldmap")) com.cumania.territories.compat.WorldMapBridge.refreshRegions(refreshDimension(), regions);
             if (FabricLoader.getInstance().isModLoaded("xaerominimap")) com.cumania.territories.compat.MinimapBridge.refresh();
         });
     }
@@ -230,7 +246,7 @@ public final class TerritoryManager {
     private static void changed() {
         version++;
         Minecraft.getInstance().execute(() -> {
-            if (FabricLoader.getInstance().isModLoaded("xaeroworldmap")) com.cumania.territories.compat.WorldMapBridge.refresh(dimension());
+            if (FabricLoader.getInstance().isModLoaded("xaeroworldmap")) com.cumania.territories.compat.WorldMapBridge.refresh(refreshDimension());
             if (FabricLoader.getInstance().isModLoaded("xaerominimap")) com.cumania.territories.compat.MinimapBridge.refresh();
         });
     }
