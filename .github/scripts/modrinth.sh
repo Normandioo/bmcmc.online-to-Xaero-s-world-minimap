@@ -26,7 +26,8 @@ python3 - "$tag" > /tmp/modrinth.json <<'P'
 import json, os, sys
 tag = sys.argv[1]
 known = {v['version'] for v in json.load(open('/tmp/mc_versions.json'))}
-wanted = [tag.split('+mc')[1]] if '+mc' in tag else ['26.1', '26.1.1', '26.1.2', '26.2', '26.3']
+suffix = tag.split('+mc')[1] if '+mc' in tag else '26.x'
+wanted = ['26.1', '26.1.1', '26.1.2', '26.2', '26.3'] if suffix == '26.x' else [suffix]
 versions = [v for v in wanted if v in known]
 deps = [{'project_id': p, 'dependency_type': t} for p, t in ((os.environ['fabric'], 'required'), (os.environ['worldmap'], 'required'), (os.environ['minimap'], 'optional')) if p]
 log = open(os.environ['notes']).read().strip() if os.path.exists(os.environ['notes']) else ''
