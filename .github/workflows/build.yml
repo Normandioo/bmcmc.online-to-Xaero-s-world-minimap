@@ -102,7 +102,9 @@ jobs:
           find dist -name '*.jar' | sort
           notes=".github/release-notes/$tag.md"
           if [ -f "$notes" ]; then notes_args=(--notes-file "$notes"); else notes_args=(--generate-notes); fi
-          gh release create "$tag" --title "$tag" --target "$GITHUB_SHA" "${notes_args[@]}" $(find dist -name '*.jar' | tr '\n' ' ')
+          base="${tag#v}"; base="${base%%+*}"; mcv="${tag#*+mc}"
+          if [ "$mcv" = "$tag" ] || [ "$mcv" = "26.x" ]; then mcv="26.1 - 26.3"; fi
+          gh release create "$tag" --title "Cumania Territories $base for Minecraft $mcv" --target "$GITHUB_SHA" "${notes_args[@]}" $(find dist -name '*.jar' | tr '\n' ' ')
       - name: Upload to Modrinth (so launchers update the mod)
         continue-on-error: true
         env:
