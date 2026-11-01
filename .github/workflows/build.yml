@@ -103,3 +103,8 @@ jobs:
           notes=".github/release-notes/$tag.md"
           if [ -f "$notes" ]; then notes_args=(--notes-file "$notes"); else notes_args=(--generate-notes); fi
           gh release create "$tag" --title "$tag" --target "$GITHUB_SHA" "${notes_args[@]}" $(find dist -name '*.jar' | tr '\n' ' ')
+      - name: Upload to Modrinth (so launchers update the mod)
+        continue-on-error: true
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+        run: bash .github/scripts/modrinth.sh
