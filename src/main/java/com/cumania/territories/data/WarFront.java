@@ -300,8 +300,6 @@ public final class WarFront {
 
     private void connect(TerritoryFile.WarInfo war, List<String[]> edges, Map<String, Boolean> linkOpen, Map<String, Integer> ownerSide) {
         // Connections, through open Bridges and Straits too (5.5.10, 7.7.11)
-        Map<String, Boolean> bridges = new HashMap<>();
-        if (war.bridges != null) for (var e : war.bridges.entrySet()) if (e.getValue() != null) bridges.put(e.getKey().toLowerCase(Locale.ROOT), !simple(e.getValue()).equals("closed"));
         Map<String, List<String>> linkEnds = new HashMap<>();
         for (String[] e : edges) {
             Unit a = unitByCity.get(e[0]), b = unitByCity.get(e[1]);
@@ -310,7 +308,7 @@ public final class WarFront {
             else if (b != null && linkOpen.containsKey(e[0])) linkEnds.computeIfAbsent(e[0], k -> new ArrayList<>()).add(e[1]);
         }
         for (var e : linkEnds.entrySet()) {
-            boolean open = bridges.getOrDefault(e.getKey(), linkOpen.getOrDefault(e.getKey(), true));
+            boolean open = Bridges.open(war, e.getKey(), linkOpen.getOrDefault(e.getKey(), true));   // a closed one joins nothing: no front line between the cities at its ends
             if (!open) continue;
             List<String> ends = e.getValue();
             for (int i = 0; i < ends.size(); i++) for (int j = i + 1; j < ends.size(); j++) {

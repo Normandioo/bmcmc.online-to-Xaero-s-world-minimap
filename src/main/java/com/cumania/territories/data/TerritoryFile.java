@@ -70,6 +70,8 @@ public final class TerritoryFile {
     public static final class Link {
         public String kind;   // bridge / strait
         public boolean open;
+        /** Where it stands (blocks); null in a file exported before the mod drew them. */
+        public Integer x, z;
     }
 
     public static final class Side {
@@ -139,6 +141,8 @@ public final class TerritoryFile {
         public String name, country, kind, development, lord, ethnicity;
         /** The marker type as the site exported it, war colour included ("SmallRed"): the icon to draw. Not in the file. */
         public transient String iconKind;
+        /** A Bridge or Strait drawn as a marker (not a city): "bridge" / "strait". Not in the file. */
+        public transient String link;
         public int x, z;
         public List<String> designations;
     }

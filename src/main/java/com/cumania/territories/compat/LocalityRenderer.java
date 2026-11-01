@@ -66,10 +66,18 @@ public final class LocalityRenderer extends ElementRenderer<TerritoryFile.Locali
     /** City key -> the colour its marker takes in the war view being drawn (see WarMarkers.iconColours). Read on the render thread only. */
     private static volatile java.util.Map<String, String> holders = java.util.Map.of();
 
+    /** Bridge / Strait key -> open, for the war being looked at (rebuilt every frame). */
+    private static volatile java.util.Map<String, Boolean> bridgeStates = java.util.Map.of();
+    static boolean bridgeOpen(TerritoryFile.Locality l) { return bridgeStates.getOrDefault(com.cumania.territories.data.Bridges.key(l), true); }
+    private static String linkLabel(TerritoryFile.Locality l) {
+        return (l.link.equals("strait") ? "Strait " : "Bridge ") + l.name + ": " + (bridgeOpen(l) ? "open" : "closed");
+    }
+
     private static final java.util.regex.Pattern ICON_COLOUR = java.util.regex.Pattern.compile("(Red|Blue|Green|Contested|Uncontrolled)$");
 
     /** The marker's icon name: the site's own, with the colour of whoever holds the city now (when a war view says). */
     private static String iconKind(TerritoryFile.Locality l) {
+        if (l.link != null) return (l.link.equals("strait") ? "Strait" : "Bridge") + (bridgeOpen(l) ? "Open" : "Closed");
         String kind = l.iconKind != null ? l.iconKind : l.kind;
         String colour = holders.get(com.cumania.territories.data.WarScore.key(l.name, l.country));
         return colour == null || kind == null ? kind : ICON_COLOUR.matcher(kind).replaceFirst("") + colour;
@@ -93,6 +101,17 @@ public final class LocalityRenderer extends ElementRenderer<TerritoryFile.Locali
                     if (!eventWar && index.landless(l.country)) continue;
                     if (scale >= ICON_FROM[rank(l)] || Focus.is(l)) list.add(l);
                 }
+                // Bridges and Straits: open or closed, as the war being looked at has them
+                var war = com.cumania.territories.data.WarMarkers.followed(index, WarMenu.viewedWarId());
+                java.util.Map<String, Boolean> states = new java.util.HashMap<>();
+                for (TerritoryFile.Locality b : index.bridges()) {
+                    if (!eventWar && index.landless(b.country)) continue;
+                    boolean drawn = index.network() == null || index.network().links == null || index.network().links.get(b.name + "(" + b.country + ")") == null
+                            || index.network().links.get(b.name + "(" + b.country + ")").open;
+                    states.put(com.cumania.territories.data.Bridges.key(b), com.cumania.territories.data.Bridges.open(war, com.cumania.territories.data.Bridges.key(b), drawn));
+                    if (scale >= ICON_FROM[rank(b)] || Focus.is(b)) list.add(b);
+                }
+                bridgeStates = states;
             }
             // in a war view the markers take the colour of whoever holds each city now
             var paint = com.cumania.territories.data.WarPaint.current();
@@ -121,7 +140,7 @@ public final class LocalityRenderer extends ElementRenderer<TerritoryFile.Locali
         @Override public int getRenderBoxTop(TerritoryFile.Locality l, Context c, float p) { return -Math.max(box(l), 40); }
         @Override public int getRenderBoxBottom(TerritoryFile.Locality l, Context c, float p) { return Math.max(box(l) + 14, 40); }
         @Override public int getLeftSideLength(TerritoryFile.Locality l, Minecraft mc) { return 0; }
-        @Override public String getMenuName(TerritoryFile.Locality l) { return l.name; }
+        @Override public String getMenuName(TerritoryFile.Locality l) { return l.link != null ? linkLabel(l) : l.name; }
         @Override public String getFilterName(TerritoryFile.Locality l) { return l.name; }
         @Override public int getMenuTextFillLeftPadding(TerritoryFile.Locality l) { return 0; }
         @Override public int getRightClickTitleBackgroundColor(TerritoryFile.Locality l) { return 0; }
@@ -185,6 +204,14 @@ public final class LocalityRenderer extends ElementRenderer<TerritoryFile.Locali
             if (play != null) drawInPlay(graphics, r + o, play);
         }
 
+        if (l.link != null) {   // a click (or the cursor) on a Bridge or Strait says whether it is open
+            if (hovered || focus) {
+                var font = Minecraft.getInstance().font;
+                String text = linkLabel(l);
+                graphics.drawString(font, text, -font.width(text) / 2, r + o + 2, bridgeOpen(l) ? 0xFF7CFC7C : 0xFFFF6B6B, true);
+            }
+            return true;
+        }
         if (TerritoryManager.config().showLocalityNames && (hovered || focus || effectiveScale(context) >= NAME_FROM[rank])) {
             var font = Minecraft.getInstance().font;
             int w = font.width(l.name);
