@@ -253,7 +253,12 @@ public final class WarFront {
         if (g.hasNetwork) for (String[] e : edges) {
             var a = byKey.get(e[0]); var b = byKey.get(e[1]);
             Unit ua = g.unitByCity.get(e[0]), ub = g.unitByCity.get(e[1]);
-            if (a == null || b == null || ua == null || ub == null || ua == ub) continue;
+            if (a == null || b == null || ua == null || ub == null) continue;
+            if (ua == ub) {
+                int ca = control.getOrDefault(e[0], NEUTRAL), cb = control.getOrDefault(e[1], NEUTRAL);
+                if (ca >= 0 && cb >= 0 && ca != cb) g.hot.add(new Hot(a, b, ca, cb));   // a warzone split between two sides
+                continue;
+            }
             if (ua.control >= 0 && ua.control == ub.control) g.inner.add(new Hot(a, b, ua.control, ub.control));
         }
         if (g.hasNetwork) for (String[] e : edges) {
@@ -262,7 +267,9 @@ public final class WarFront {
             if (a == null || b == null || ua == null || ub == null || ua == ub) continue;
             if (ua.control == NEUTRAL || ub.control == NEUTRAL || ua.control == ub.control) continue;
             if (!g.putsInPlay.getOrDefault(ua, Set.of()).contains(ub) && !g.putsInPlay.getOrDefault(ub, Set.of()).contains(ua)) continue;
-            g.hot.add(new Hot(a, b, ua.control, ub.control));
+            int ca = control.getOrDefault(e[0], NEUTRAL), cb = control.getOrDefault(e[1], NEUTRAL);   // each end takes the colour of whoever holds that city
+            if (ca >= 0 && cb >= 0 && ca != cb) g.hot.add(new Hot(a, b, ca, cb));
+            else if (ca < 0 || cb < 0) g.hot.add(new Hot(a, b, ua.control, ub.control));
             drawn.add(pair(ua, ub));
         }
         // the cities that are In Play across neutral land (Short Circuits), a Bridge or a Strait have no Connection of their own to draw:
@@ -275,11 +282,14 @@ public final class WarFront {
                 if (!drawn.add(uv)) continue;
                 TerritoryFile.Locality bestA = null, bestB = null;
                 double best = Double.MAX_VALUE;
+                int cA = u.control, cB = v.control;
                 for (var a : u.members) for (var b : v.members) {
+                    int xa = control.getOrDefault(WarScore.key(a.name, a.country), NEUTRAL), xb = control.getOrDefault(WarScore.key(b.name, b.country), NEUTRAL);
+                    if (xa >= 0 && xb >= 0 && xa == xb) continue;   // same side on both ends: no front there
                     double d = Math.hypot(a.x - b.x, a.z - b.z);
-                    if (d < best) { best = d; bestA = a; bestB = b; }
+                    if (d < best) { best = d; bestA = a; bestB = b; cA = xa >= 0 ? xa : u.control; cB = xb >= 0 ? xb : v.control; }
                 }
-                if (bestA != null) g.hot.add(new Hot(bestA, bestB, u.control, v.control));
+                if (bestA != null) g.hot.add(new Hot(bestA, bestB, cA, cB));
             }
         }
         return g;
