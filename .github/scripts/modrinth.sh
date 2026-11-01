@@ -8,14 +8,15 @@ if [[ "${GITHUB_REF:-}" == refs/tags/v* ]]; then tag="$GITHUB_REF_NAME"; else ta
 number="${tag#v}"
 api=https://api.modrinth.com/v2
 ua="User-Agent: Normandioo/bmcmc.online-to-xaero-s-world-minimap (release workflow)"
+auth="Authorization: $MODRINTH_TOKEN"
 jar=$(find dist -name 'cumania-territories-*.jar' ! -name '*-sources.jar' ! -name '*-dev.jar' | sort | head -1)
 if [ -z "$jar" ]; then echo "::warning title=Modrinth::no mod jar found in dist"; exit 0; fi
 
-project=$(curl -fsS -H "$ua" "$api/project/$slug" | python3 -c "import json,sys; print(json.load(sys.stdin)['id'])") || { echo "::warning title=Modrinth::project $slug not found"; exit 0; }
-if curl -fsS -H "$ua" "$api/project/$project/version" | python3 -c "import json,sys; sys.exit(0 if any(v['version_number']=='$number' for v in json.load(sys.stdin)) else 1)"; then
+project=$(curl -fsS -H "$ua" -H "$auth" "$api/project/$slug" | python3 -c "import json,sys; print(json.load(sys.stdin)['id'])") || { echo "::warning title=Modrinth::project $slug not found"; exit 0; }
+if curl -fsS -H "$ua" -H "$auth" "$api/project/$project/version" | python3 -c "import json,sys; sys.exit(0 if any(v['version_number']=='$number' for v in json.load(sys.stdin)) else 1)"; then
   echo "Modrinth already has $number"; exit 0
 fi
-dep() { curl -fsS -H "$ua" "$api/project/$1" | python3 -c "import json,sys; print(json.load(sys.stdin)['id'])" 2>/dev/null; }
+dep() { curl -fsS -H "$ua" -H "$auth" "$api/project/$1" | python3 -c "import json,sys; print(json.load(sys.stdin)['id'])" 2>/dev/null; }
 fabric=$(dep fabric-api); worldmap=$(dep xaeros-world-map); minimap=$(dep xaeros-minimap)
 
 notes=".github/release-notes/$tag.md"
