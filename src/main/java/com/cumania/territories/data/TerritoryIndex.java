@@ -312,6 +312,14 @@ public final class TerritoryIndex {
     public int countryOfProvince(int province) { return countryOfProvince[province]; }
     public boolean isEmpty() { return width == 0; }
     public int provinceCount() { return provinceLabels.length; }
+    private volatile List<TerritoryFile.Locality> bridges;
+    /** The Bridges and Straits as markers (empty when the file gives no positions). */
+    public List<TerritoryFile.Locality> bridges() {
+        List<TerritoryFile.Locality> list = bridges;
+        if (list == null) bridges = list = List.copyOf(Bridges.of(network));
+        return list;
+    }
+
     private volatile java.util.Set<String> landless;
     /** True for a nation that has cities but no land on the map (an event's): its cities belong to the war view, not to the normal map. */
     public boolean landless(String country) {
