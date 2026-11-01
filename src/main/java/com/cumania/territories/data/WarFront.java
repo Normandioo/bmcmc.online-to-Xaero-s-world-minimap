@@ -215,7 +215,7 @@ public final class WarFront {
             control.put(k, ctl);
         }
 
-        // Warzones: cities joined by yellow lines are one unit (7.8.7)
+        // Warzones no longer exist: every city is a unit of its own (the yellow-line flag in the data is ignored)
         Map<String, String> parent = new HashMap<>();
         for (var l : index.localities()) { String k = WarScore.key(l.name, l.country); parent.put(k, k); }
         List<String[]> edges = new ArrayList<>();
@@ -225,9 +225,7 @@ public final class WarFront {
             for (List<Object> e : net.edges) {
                 if (e == null || e.size() < 2 || !(e.get(0) instanceof String) || !(e.get(1) instanceof String)) continue;
                 String a = ((String) e.get(0)).toLowerCase(Locale.ROOT), b = ((String) e.get(1)).toLowerCase(Locale.ROOT);
-                boolean warzone = e.size() > 2 && e.get(2) instanceof Number n && n.intValue() != 0;
                 edges.add(new String[]{a, b});
-                if (warzone && parent.containsKey(a) && parent.containsKey(b)) parent.put(find(parent, a), find(parent, b));
             }
         }
         Map<String, Unit> byRoot = new LinkedHashMap<>();
