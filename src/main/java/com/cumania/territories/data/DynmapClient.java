@@ -101,7 +101,7 @@ public final class DynmapClient {
             if (now - wantMap < 3000 && now - lastPlayersPoll >= every && (config.showOnlinePlayers || config.showSwords || config.autoMap)) { lastPlayersPoll = now; pollPlayers(); }
             boolean watching = now - wantMarkers < 3000;
             boolean background = now - wantBackground < 3000;
-            long markersEvery = watching ? 8000 : 20000;
+            long markersEvery = watching ? 3000 : 20000;   // looking at a live war: a city that changes hands shows within a few seconds
             if ((watching || background) && now - lastMarkersPoll >= markersEvery && config.liveWar) { lastMarkersPoll = now; pollMarkers(); }
         } catch (RuntimeException e) {
             CumaniaTerritories.LOGGER.debug("dynmap tick failed", e);
