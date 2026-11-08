@@ -23,9 +23,15 @@ public final class WarEffects {
         });
     }
 
+    private static String lastServer = "";
+
     private static void tick() {
         var config = TerritoryManager.config();
         var mc = net.minecraft.client.Minecraft.getInstance();
+        // Auto map: a server the list of maps names picks its map as soon as you join
+        var server = mc.getCurrentServer();
+        String address = server == null ? "" : server.ip;
+        if (!address.equals(lastServer)) { lastServer = address; if (!address.isEmpty()) TerritoryManager.followServer(address); }
         // Auto map: which dynmap world are you in? (dynmap lists every player with its world)
         if (config.autoMap && TerritoryManager.index() != null && mc.player != null) {
             DynmapClient.wantPlayers();

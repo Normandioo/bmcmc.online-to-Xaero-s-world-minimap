@@ -42,37 +42,45 @@ public final class TerritoryManager {
         configFile = configDir.resolve("cumania_territories.json");
         cacheFile = configDir.resolve("cumania_territories_cache.json");
         config = Config.load(configFile);
+        MapCatalog.init(configDir);
         cacheFile = cacheFor(config.map);
         // Show the last download immediately, then check the site
         try { if (Files.exists(cacheFile)) apply(TerritoryFile.parse(Files.readString(cacheFile)), false); }
         catch (IOException | RuntimeException e) { CumaniaTerritories.LOGGER.warn("Ignoring unreadable cache", e); }
         scheduler = Executors.newSingleThreadScheduledExecutor(r -> { Thread t = new Thread(r, "cumania-territories"); t.setDaemon(true); return t; });
         rescheduleRefresh();
+        scheduler.scheduleWithFixedDelay(MapCatalog::refresh, 0, 30, TimeUnit.MINUTES);   // the list of maps: now, then every half hour
         reload();
     }
 
     // ---- the site's maps (Gaia, Cumania IV): each has its own territories.json in its own folder, and its own world on the dynmap ----
 
-    /** key, name, folder on the site, dynmap world (Gaia's is the one in the config). */
-    private static final String[][] MAPS = {{"gaia", "Gaia", "gaia/", null}, {"cumania", "Cumania IV", "cumania4/", "Cumania4"}};
+    private static MapCatalog.Entry mapInfo(String key) { return MapCatalog.get(key); }
+    public static String mapName() { return mapInfo(config.map).name; }
 
-    private static String[] mapInfo(String key) {
-        for (String[] m : MAPS) if (m[0].equalsIgnoreCase(key)) return m;
-        return MAPS[0];
+    /** The territories file of the map being shown. */
+    public static String mapUrl() { return MapCatalog.territoriesUrl(mapInfo(config.map)); }
+
+    public static String dynmapWorld() { return dynmapWorldOf(mapInfo(config.map)); }
+    private static String dynmapWorldOf(MapCatalog.Entry m) { return m.dynmapWorld != null ? m.dynmapWorld : config.dynmapWorld; }
+
+    /** The dynmap of the map being shown. */
+    public static String dynmapUrl() { String u = mapInfo(config.map).dynmapUrl; return u != null ? u : config.dynmapUrl; }
+
+    /** The list of maps changed (or came from the site for the first time): keep showing a map that still exists, and reload if its file moved. */
+    public static void catalogChanged() {
+        var wanted = MapCatalog.list();
+        boolean exists = false;
+        for (var m : wanted) if (m.key.equalsIgnoreCase(config.map)) exists = true;
+        if (!exists) { chooseMap(wanted.get(0).key); return; }
+        reload();
     }
-    public static String mapName() { return mapInfo(config.map)[1]; }
 
-    /** The territories file of the map being shown (the config's url is Gaia's; the other maps sit in a sibling folder). */
-    public static String mapUrl() {
-        String url = config.url, folder = mapInfo(config.map)[2];
-        if (url == null || folder.equals("gaia/")) return url;
-        int at = url.lastIndexOf("gaia/");
-        return at < 0 ? url : url.substring(0, at) + folder + url.substring(at + "gaia/".length());
-    }
-
-    public static String dynmapWorld() {
-        String world = mapInfo(config.map)[3];
-        return world != null ? world : config.dynmapWorld;
+    /** The map that wants the server you are on, when the list names one (Auto only). */
+    public static void followServer(String address) {
+        if (!config.autoMap) return;
+        var m = MapCatalog.forServer(address);
+        if (m != null && !m.key.equalsIgnoreCase(config.map)) chooseMap(m.key);
     }
 
     private static Path cacheFor(String key) {
@@ -85,10 +93,11 @@ public final class TerritoryManager {
 
     /** The settings button: Auto -> each map in turn -> Auto. */
     public static void nextMap() {
-        if (config.autoMap) { config.autoMap = false; chooseMap(MAPS[0][0]); return; }
-        for (int i = 0; i < MAPS.length; i++) {
-            if (!MAPS[i][0].equalsIgnoreCase(config.map)) continue;
-            if (i + 1 < MAPS.length) chooseMap(MAPS[i + 1][0]);
+        var maps = MapCatalog.list();
+        if (config.autoMap) { config.autoMap = false; chooseMap(maps.get(0).key); return; }
+        for (int i = 0; i < maps.size(); i++) {
+            if (!maps.get(i).key.equalsIgnoreCase(config.map)) continue;
+            if (i + 1 < maps.size()) chooseMap(maps.get(i + 1).key);
             else { config.autoMap = true; saveConfig(); }
             return;
         }
@@ -102,15 +111,14 @@ public final class TerritoryManager {
      */
     public static void followWorld(String dynmapWorld) {
         if (!config.autoMap || dynmapWorld == null) return;
-        for (String[] m : MAPS) {
-            String world = m[3] != null ? m[3] : config.dynmapWorld;
-            if (world.equalsIgnoreCase(dynmapWorld)) { if (!m[0].equalsIgnoreCase(config.map)) chooseMap(m[0]); return; }
+        for (var m : MapCatalog.list()) {
+            if (dynmapWorldOf(m).equalsIgnoreCase(dynmapWorld)) { if (!m.key.equalsIgnoreCase(config.map)) chooseMap(m.key); return; }
         }
     }
 
     /** Switches to a map: nothing of the old one stays on screen. */
     public static void chooseMap(String key) {
-        String wanted = mapInfo(key)[0];
+        String wanted = mapInfo(key).key;
         saveConfig();
         if (wanted.equalsIgnoreCase(config.map)) return;
         config.map = wanted;
@@ -154,14 +162,28 @@ public final class TerritoryManager {
      */
     public static boolean inDimension(ResourceKey<Level> key) {
         if (key == null) return false;
-        if (!"gaia".equalsIgnoreCase(config.map)) return key != Level.NETHER && key != Level.END;
-        return key == dimension();
+        String d = mapInfo(config.map).dimension.toLowerCase();
+        if (d.equals("any")) return key != Level.NETHER && key != Level.END;
+        return key == (d.equals("config") ? dimension() : named(d));
     }
 
     /** The dimension to ask Xaero's to redraw: the one you are in, when the map is not Gaia's. */
     private static ResourceKey<Level> refreshDimension() {
         var level = Minecraft.getInstance().level;
-        return !"gaia".equalsIgnoreCase(config.map) && level != null && inDimension(level.dimension()) ? level.dimension() : dimension();
+        return mapInfo(config.map).dimension.equalsIgnoreCase("any") && level != null && inDimension(level.dimension()) ? level.dimension() : currentDimension();
+    }
+
+    private static ResourceKey<Level> currentDimension() {
+        String d = mapInfo(config.map).dimension.toLowerCase();
+        return d.equals("config") || d.equals("any") ? dimension() : named(d);
+    }
+
+    private static ResourceKey<Level> named(String d) {
+        return switch (d) {
+            case "nether", "the_nether" -> Level.NETHER;
+            case "end", "the_end" -> Level.END;
+            default -> Level.OVERWORLD;
+        };
     }
 
     public static ResourceKey<Level> dimension() {
