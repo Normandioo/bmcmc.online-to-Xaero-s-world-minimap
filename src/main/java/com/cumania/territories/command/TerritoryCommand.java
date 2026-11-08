@@ -24,10 +24,7 @@ public final class TerritoryCommand {
                             ctx.getSource().sendFeedback(Component.literal("War menu toggled (it shows on Xaero's World Map)"));
                             return 1;
                         }))
-<<<<<<< HEAD
-                        .then(ClientCommandManager.literal("status").executes(ctx -> {
-=======
-                        .then(ClientCommands.literal("maps").executes(ctx -> {
+                        .then(ClientCommandManager.literal("maps").executes(ctx -> {
                             var out = ctx.getSource();
                             out.sendFeedback(Component.literal("Maps (" + com.cumania.territories.MapCatalog.source()
                                     + (com.cumania.territories.MapCatalog.error().isEmpty() ? "" : "; last download of maps.json failed: " + com.cumania.territories.MapCatalog.error()) + "):"));
@@ -38,7 +35,7 @@ public final class TerritoryCommand {
                                         + " | dimension " + m.dimension + (m.servers.isEmpty() ? "" : " | servers " + m.servers)));
                             return 1;
                         }))
-                        .then(ClientCommands.literal("discover").executes(ctx -> {
+                        .then(ClientCommandManager.literal("discover").executes(ctx -> {
                             // what to write in maps.json for the world you are standing in
                             var mc = net.minecraft.client.Minecraft.getInstance();
                             var me = mc.player == null ? null : com.cumania.territories.data.DynmapClient.find(mc.player.getName().getString());
@@ -53,8 +50,7 @@ public final class TerritoryCommand {
                             out.sendFeedback(Component.literal("Dynmap: " + TerritoryManager.dynmapUrl()));
                             return 1;
                         }))
-                        .then(ClientCommands.literal("status").executes(ctx -> {
->>>>>>> 7e3f2f9 (Maps come from maps.json on the site (1.21.0+mc26.x))
+                        .then(ClientCommandManager.literal("status").executes(ctx -> {
                             var index = TerritoryManager.index();
                             ctx.getSource().sendFeedback(Component.literal(
                                     (TerritoryManager.config().enabled ? "Showing " : "Hidden: ")
