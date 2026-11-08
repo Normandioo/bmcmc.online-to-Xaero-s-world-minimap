@@ -24,7 +24,37 @@ public final class TerritoryCommand {
                             ctx.getSource().sendFeedback(Component.literal("War menu toggled (it shows on Xaero's World Map)"));
                             return 1;
                         }))
+<<<<<<< HEAD
                         .then(ClientCommandManager.literal("status").executes(ctx -> {
+=======
+                        .then(ClientCommands.literal("maps").executes(ctx -> {
+                            var out = ctx.getSource();
+                            out.sendFeedback(Component.literal("Maps (" + com.cumania.territories.MapCatalog.source()
+                                    + (com.cumania.territories.MapCatalog.error().isEmpty() ? "" : "; last download of maps.json failed: " + com.cumania.territories.MapCatalog.error()) + "):"));
+                            for (var m : com.cumania.territories.MapCatalog.list())
+                                out.sendFeedback(Component.literal((m.key.equalsIgnoreCase(TerritoryManager.config().map) ? " > " : "   ") + m.key + " = " + m.name
+                                        + " | " + com.cumania.territories.MapCatalog.territoriesUrl(m)
+                                        + " | dynmap world " + (m.dynmapWorld == null ? TerritoryManager.config().dynmapWorld + " (config)" : m.dynmapWorld)
+                                        + " | dimension " + m.dimension + (m.servers.isEmpty() ? "" : " | servers " + m.servers)));
+                            return 1;
+                        }))
+                        .then(ClientCommands.literal("discover").executes(ctx -> {
+                            // what to write in maps.json for the world you are standing in
+                            var mc = net.minecraft.client.Minecraft.getInstance();
+                            var me = mc.player == null ? null : com.cumania.territories.data.DynmapClient.find(mc.player.getName().getString());
+                            com.cumania.territories.data.DynmapClient.wantPlayers();
+                            String world = me == null ? "? (dynmap has not listed you yet: stand still a few seconds and try again)" : me.world();
+                            String dimension = mc.level == null ? "?" : mc.level.dimension().toString();
+                            String server = mc.getCurrentServer() == null ? "? (single player)" : mc.getCurrentServer().ip;
+                            var out = ctx.getSource();
+                            out.sendFeedback(Component.literal("Dynmap world: " + world));
+                            out.sendFeedback(Component.literal("Minecraft dimension: " + dimension + " (use \"any\" in maps.json if the world has a dimension of its own)"));
+                            out.sendFeedback(Component.literal("Server address: " + server));
+                            out.sendFeedback(Component.literal("Dynmap: " + TerritoryManager.dynmapUrl()));
+                            return 1;
+                        }))
+                        .then(ClientCommands.literal("status").executes(ctx -> {
+>>>>>>> 7e3f2f9 (Maps come from maps.json on the site (1.21.0+mc26.x))
                             var index = TerritoryManager.index();
                             ctx.getSource().sendFeedback(Component.literal(
                                     (TerritoryManager.config().enabled ? "Showing " : "Hidden: ")

@@ -109,7 +109,7 @@ public final class DynmapClient {
     }
 
     private static String base() {
-        String url = TerritoryManager.config().dynmapUrl;
+        String url = TerritoryManager.dynmapUrl();
         return url == null || url.isBlank() ? null : url.endsWith("/") ? url : url + "/";
     }
 
