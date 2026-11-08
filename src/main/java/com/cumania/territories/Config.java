@@ -11,6 +11,8 @@ import java.nio.file.Path;
 public final class Config {
     /** Where the site publishes the territories (gaia/territories.json on the site). */
     public String url = "https://bmcmc.online/gaia/territories.json";
+    /** The list of maps (which territories file, dynmap world and dimension each one has). Adding a world to that file needs no new version of the mod. */
+    public String catalogUrl = "https://bmcmc.online/maps.json";
     /** Which of the site's maps is shown: "gaia" or "cumania" (Cumania IV, the event map). */
     public String map = "gaia";
     /** Follow the dynmap world you are in (Gaia and Cumania IV can be on the same server). Choosing a map by hand turns this off. */
